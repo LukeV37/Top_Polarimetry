@@ -26,13 +26,13 @@ cd madgraph
 ```
 The lhe file will generated in the `pp_tt_semi_full/Events/run_01/` dir. 
 
-### Madgraph
-To run madgraph simulation, run the following
+### Pythia
+To shower in pythia, run the following
 ```
-cd madgraph
+cd pythia
 ./run.sh
 ```
-The lhe file will generated in the `pp_tt_semi_full/Events/run_01/` dir. 
+The hepmc file will generated in the `output/` dir. 
 
 
 ## Dependencies
