@@ -13,3 +13,4 @@
 [submodule "delphes"]
 	path = modules/delphes-v3.5.0
 	url = https://github.com/delphes/delphes.git
+	ignore = dirty
