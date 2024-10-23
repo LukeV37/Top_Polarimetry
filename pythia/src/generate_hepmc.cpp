@@ -6,7 +6,6 @@ using namespace Pythia8;
 int main()
 {
     Pythia pythia;
-    //pythia.readFile("../cards/pythia8_card.dat");
     pythia.readString("Beams:frameType = 4");
     pythia.readString("Beams:LHEF = ../../madgraph/pp_tt_semi_full/Events/run_01/unweighted_events.lhe.gz");
     Pythia8ToHepMC toHepMC("../output/pp_tt_semi_full.hepmc");
