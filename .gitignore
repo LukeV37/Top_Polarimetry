@@ -1,3 +1,4 @@
 madgraph/pp_tt_semi_full/
 *.root
 .ipynb_checkpoints
+*MG5_aMC_v3*
