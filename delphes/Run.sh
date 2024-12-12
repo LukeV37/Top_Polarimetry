@@ -1,6 +1,6 @@
 #!/bin/bash
 
-for cut in 200 350 500;
+for cut in 200 300 400;
 do
     echo "Converting LHE to ROOT file. Please be patient..."
     python3 LHEReader.py --input ../madgraph/minpTt_$cut/Events/run_01/unweighted_events.lhe --output partons_$cut.root
