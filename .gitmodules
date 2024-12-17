@@ -14,3 +14,7 @@
 	path = submodules/delphes-v3.5.0
 	url = https://github.com/delphes/delphes.git
 	ignore = dirty
+[submodule "fastjet"]
+	path = submodules/fastjet-v3.4.2
+	url = https://gitlab.com/fastjet/fastjet.git
+	ignore = dirty
