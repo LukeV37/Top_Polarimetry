@@ -39,7 +39,7 @@ int main()
     FastJet->Branch("jet_m", &jet_m);
 
     std::vector<std::vector<float>> trk_pT, trk_eta, trk_phi, trk_m, trk_q, trk_d0, trk_z0;
-    std::vector<std::vector<int>> trk_fromTop;
+    std::vector<std::vector<int>> trk_origin;
     FastJet->Branch("trk_pt", &trk_pT);
     FastJet->Branch("trk_eta", &trk_eta);
     FastJet->Branch("trk_phi", &trk_phi);
@@ -47,7 +47,7 @@ int main()
     FastJet->Branch("trk_q", &trk_q);
     FastJet->Branch("trk_d0", &trk_d0);
     FastJet->Branch("trk_z0", &trk_z0);
-    FastJet->Branch("trk_fromTop", &trk_fromTop);
+    FastJet->Branch("trk_origin", &trk_origin);
 
     // Configure Jet parameters
     float pTmin_jet = 250; // GeV
@@ -101,7 +101,7 @@ int main()
 
         // prepare for filling
         jet_pt.clear(); jet_eta.clear(); jet_phi.clear(); jet_m.clear();
-        trk_pT.clear(); trk_eta.clear(); trk_phi.clear(); trk_m.clear(); trk_q.clear(); trk_d0.clear(); trk_z0.clear(); trk_fromTop.clear();
+        trk_pT.clear(); trk_eta.clear(); trk_phi.clear(); trk_m.clear(); trk_q.clear(); trk_d0.clear(); trk_z0.clear(); trk_origin.clear();
 
         // Cluster particles using fastjet
         fastjet::ClusterSequence clustSeq(fastjet_particles, jetDefs["fatjet"]);
@@ -113,7 +113,7 @@ int main()
 
             // Temporary vectors with jet constituent info
             std::vector<float> trk_pT_tmp, trk_eta_tmp, trk_phi_tmp, trk_m_tmp, trk_q_tmp, trk_d0_tmp, trk_z0_tmp;
-            std::vector<int> trk_fromTop_tmp;
+            std::vector<int> trk_origin_tmp;
 
             // Loop through jet constituents
             for (auto trk:jet.constituents()) {
@@ -129,8 +129,8 @@ int main()
                 trk_z0_tmp.push_back(z0);
 
                 int bcflag = 0;
-                int fromTop = trace_origin_top(pythia.event,idx,bcflag);
-                trk_fromTop_tmp.push_back(fromTop);
+                int origin = trace_origin_top(pythia.event,idx,bcflag);
+                trk_origin_tmp.push_back(origin);
 
             } // End loop through trks
 
@@ -141,7 +141,7 @@ int main()
             trk_q.push_back(trk_q_tmp);
             trk_d0.push_back(trk_d0_tmp);
             trk_z0.push_back(trk_z0_tmp);
-            trk_fromTop.push_back(trk_fromTop_tmp);
+            trk_origin.push_back(trk_origin_tmp);
 
         } // End loop through jets
 
