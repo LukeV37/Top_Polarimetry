@@ -50,7 +50,7 @@ int main()
     FastJet->Branch("trk_fromTop", &trk_fromTop);
 
     // Configure Jet parameters
-    float pTmin_jet = 25; // GeV
+    float pTmin_jet = 250; // GeV
     std::map<TString, fastjet::JetDefinition> jetDefs;
     jetDefs["anti-kt"] = fastjet::JetDefinition(
       fastjet::antikt_algorithm, 0.4, fastjet::E_scheme, fastjet::Best);
@@ -79,7 +79,7 @@ int main()
         // Write out event to a hepmc file
         toHepMC.writeNextEvent( pythia );
 
-        // Initialize vector for fastjet clustering and user id
+        // Initialize vector for fastjet clustering and particle index
         std::vector<fastjet::PseudoJet> fastjet_particles;
         int particle_num=0;
 
