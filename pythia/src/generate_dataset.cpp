@@ -39,15 +39,15 @@ int main()
     FastJet->Branch("jet_m", &jet_m);
 
     std::vector<std::vector<float>> trk_pT, trk_eta, trk_phi, trk_m, trk_q, trk_d0, trk_z0;
-    std::vector<std::vector<int>> trk_isTop;
-    FastJet->Branch("trk_pT", &trk_pT);
+    std::vector<std::vector<int>> trk_fromTop;
+    FastJet->Branch("trk_pt", &trk_pT);
     FastJet->Branch("trk_eta", &trk_eta);
     FastJet->Branch("trk_phi", &trk_phi);
     FastJet->Branch("trk_m", &trk_m);
     FastJet->Branch("trk_q", &trk_q);
     FastJet->Branch("trk_d0", &trk_d0);
     FastJet->Branch("trk_z0", &trk_z0);
-    FastJet->Branch("trk_isTop", &trk_isTop);
+    FastJet->Branch("trk_fromTop", &trk_fromTop);
 
     // Configure Jet parameters
     float pTmin_jet = 25; // GeV
@@ -81,26 +81,27 @@ int main()
 
         // Initialize vector for fastjet clustering and user id
         std::vector<fastjet::PseudoJet> fastjet_particles;
-        int user_id=0;
+        int particle_num=0;
 
         // Loop through particles in the event
         for(int j=0;j<pythia.event.size();j++){
             auto &p = pythia.event[j];
+            particle_num++; // Keep track of particle num
             
-            // Only consider final state particles for clustering
+            // Do not consider intermediate particles for clustering
             if (not p.isFinal()) continue;
             // Do not consider neutrinos in clustering
             if (std::abs(p.id())==12 || std::abs(p.id())==14 || std::abs(p.id())==16) continue;
 
             // Convert particles to PseduoJet object, set the user idx, and append to the list of fastjet particles
             fastjet::PseudoJet fj(p.px(), p.py(), p.pz(), p.e());
-            fj.set_user_index(user_id++);
+            fj.set_user_index(particle_num-1); // Subtract 1 to become 0 based
             fastjet_particles.push_back(fj);
         }
 
         // prepare for filling
         jet_pt.clear(); jet_eta.clear(); jet_phi.clear(); jet_m.clear();
-        trk_pT.clear(); trk_eta.clear(); trk_phi.clear(); trk_m.clear(); trk_q.clear(); trk_d0.clear(); trk_z0.clear(); trk_isTop.clear();
+        trk_pT.clear(); trk_eta.clear(); trk_phi.clear(); trk_m.clear(); trk_q.clear(); trk_d0.clear(); trk_z0.clear(); trk_fromTop.clear();
 
         // Cluster particles using fastjet
         fastjet::ClusterSequence clustSeq(fastjet_particles, jetDefs["fatjet"]);
@@ -112,7 +113,7 @@ int main()
 
             // Temporary vectors with jet constituent info
             std::vector<float> trk_pT_tmp, trk_eta_tmp, trk_phi_tmp, trk_m_tmp, trk_q_tmp, trk_d0_tmp, trk_z0_tmp;
-            std::vector<int> trk_isTop_tmp; 
+            std::vector<int> trk_fromTop_tmp;
 
             // Loop through jet constituents
             for (auto trk:jet.constituents()) {
@@ -128,8 +129,8 @@ int main()
                 trk_z0_tmp.push_back(z0);
 
                 int bcflag = 0;
-                int isTop = trace_origin_top(pythia.event,idx,bcflag);
-                trk_isTop_tmp.push_back(isTop);
+                int fromTop = trace_origin_top(pythia.event,idx,bcflag);
+                trk_fromTop_tmp.push_back(fromTop);
 
             } // End loop through trks
 
@@ -140,7 +141,7 @@ int main()
             trk_q.push_back(trk_q_tmp);
             trk_d0.push_back(trk_d0_tmp);
             trk_z0.push_back(trk_z0_tmp);
-            trk_isTop.push_back(trk_isTop_tmp);
+            trk_fromTop.push_back(trk_fromTop_tmp);
 
         } // End loop through jets
 
