@@ -1,3 +1,7 @@
+/////////////////////////////////
+/// Author: Sasha Khanov 2024 ///
+/////////////////////////////////
+
 void find_ip(double pT, double eta, double phi, double xProd, double yProd, double zProd, double& d0, double& z0)
 {
   // calculate IP

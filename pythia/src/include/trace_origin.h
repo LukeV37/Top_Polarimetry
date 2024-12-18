@@ -1,3 +1,7 @@
+/////////////////////////////////
+/// Author: Sasha Khanov 2024 ///
+/////////////////////////////////
+
 int trace_origin_top(const Pythia8::Event& event, int ix, int& bcflag) {
   // see if found W or top
   int id = event[ix].id();
