@@ -1,15 +1,10 @@
 ## Quick Start
-Clone the repo over ssh using:
+Clone the repo:
 ```
 git clone --recursive git@github.com:LukeV37/Pileup_Project.git
 ```
 
-Or clone the repo over https using:
-```
-git clone --recursive https://github.com/LukeV37/Pileup_Project.git
-```
-
-Install the submodules:
+Ensure dependencies are met, and install the submodules:
 ```
 ./build_submodules.sh
 ```
@@ -23,8 +18,9 @@ To run madgraph simulation, run the following
 ```
 cd madgraph
 ./run.sh
+./post_process.sh
 ```
-The lhe file will generated in the `pp_tt_semi_full/Events/run_01/` dir. 
+The lhe file file is generated, and the training labels are written to root file. 
 
 ### Pythia
 To shower in pythia, run the following
@@ -32,13 +28,19 @@ To shower in pythia, run the following
 cd pythia
 ./run.sh
 ```
-The hepmc file will generated in the `output/` dir. 
-
+The training data will be written to a root file. 
 
 ## Dependencies
-Runs on Ubuntu 22.04 and wsl2
+Runs on most linux environments. Developed on Ubuntu 22.04.
 
 Required Dependencies:
 <ul>
+  <li>python3</li>
+  <li>ROOTv6</li>
+  <li>g++</li>
+  <li>gfortran</li>
   <li>gzip</li>
+  <li>automake</li>
+  <li>libtool</li>
+  <li>autoconf</li>
 </ul>
