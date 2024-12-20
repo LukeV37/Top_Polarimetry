@@ -92,6 +92,12 @@ int main()
             if (not p.isFinal()) continue;
             // Do not consider neutrinos in clustering
             if (std::abs(p.id())==12 || std::abs(p.id())==14 || std::abs(p.id())==16) continue;
+            // Do not consider leptons from anti-top
+            if (std::abs(p.id())==11 || std::abs(p.id())==13){
+                int bcflag=0;
+                int origin = trace_origin_top(pythia.event,particle_num-1,bcflag);
+                if (origin == -24 && p.pT() > 30) continue;
+            }
 
             // Convert particles to PseduoJet object, set the user idx, and append to the list of fastjet particles
             fastjet::PseudoJet fj(p.px(), p.py(), p.pz(), p.e());
