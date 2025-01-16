@@ -1,7 +1,7 @@
 ## Quick Start
 Clone the repo:
 ```
-git clone --recursive git@github.com:LukeV37/Pileup_Project.git
+git clone --recursive git@github.com:LukeV37/Top_Polarimetry.git
 ```
 
 Ensure dependencies are met, and install the submodules:
