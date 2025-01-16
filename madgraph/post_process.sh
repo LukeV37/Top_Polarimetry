@@ -21,4 +21,4 @@ python3 include/TLorentz_Labels.py
 
 # Clean workspace (uncompressed version no longer needed)
 rm -f ./pp_tt_semi_full/Events/run_01/unweighted_events.lhe
-rm -f hard_process.root
+#rm -f hard_process.root
