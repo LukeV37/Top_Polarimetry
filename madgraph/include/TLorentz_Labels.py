@@ -113,10 +113,10 @@ class Event:
                           "top_py": self.top_label.py,
                           "top_pz": self.top_label.pz,
                           "top_E" : self.top_label.E,
-                          "down_px": self.top_label.px,
-                          "down_py": self.top_label.py,
-                          "down_pz": self.top_label.pz,
-                          "down_E" : self.top_label.E,
+                          "down_px": self.down_label.px,
+                          "down_py": self.down_label.py,
+                          "down_pz": self.down_label.pz,
+                          "down_E" : self.down_label.E,
                           "costheta": self.costheta
                          }
             #f['labels'].show()
