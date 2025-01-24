@@ -14,7 +14,7 @@
 #include "TString.h"
 
 #include "include/estimate_ip.h"
-#include "include/trace_origin.h"
+#include "include/trace_origin_top.h"
 
 int main()
 {
