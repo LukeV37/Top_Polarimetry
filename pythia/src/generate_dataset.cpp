@@ -15,7 +15,6 @@
 
 #include "include/estimate_ip.h"
 #include "include/trace_origin_top.h"
-#include "include/trace_origin_down.h"
 
 int main()
 {
@@ -39,17 +38,27 @@ int main()
     FastJet->Branch("jet_phi", &jet_phi);
     FastJet->Branch("jet_m", &jet_m);
 
-    std::vector<std::vector<float>> trk_pT, trk_eta, trk_phi, trk_m, trk_q, trk_d0, trk_z0;
-    std::vector<std::vector<int>> trk_origin, trk_fromDown;
+    std::vector<std::vector<float>> jet_trk_pT, jet_trk_eta, jet_trk_phi, jet_trk_q, jet_trk_d0, jet_trk_z0;
+    std::vector<std::vector<int>> jet_trk_origin, jet_trk_pid;
+    FastJet->Branch("jet_trk_pt", &jet_trk_pT);
+    FastJet->Branch("jet_trk_eta", &jet_trk_eta);
+    FastJet->Branch("jet_trk_phi", &jet_trk_phi);
+    FastJet->Branch("jet_trk_q", &jet_trk_q);
+    FastJet->Branch("jet_trk_d0", &jet_trk_d0);
+    FastJet->Branch("jet_trk_z0", &jet_trk_z0);
+    FastJet->Branch("jet_trk_pid", &jet_trk_pid);
+    FastJet->Branch("jet_trk_origin", &jet_trk_origin);
+
+    std::vector<float> trk_pT, trk_eta, trk_phi, trk_q, trk_d0, trk_z0;
+    std::vector<int> trk_origin, trk_pid;
     FastJet->Branch("trk_pt", &trk_pT);
     FastJet->Branch("trk_eta", &trk_eta);
     FastJet->Branch("trk_phi", &trk_phi);
-    FastJet->Branch("trk_m", &trk_m);
     FastJet->Branch("trk_q", &trk_q);
     FastJet->Branch("trk_d0", &trk_d0);
     FastJet->Branch("trk_z0", &trk_z0);
+    FastJet->Branch("trk_pid", &trk_pid);
     FastJet->Branch("trk_origin", &trk_origin);
-    FastJet->Branch("trk_fromDown", &trk_fromDown);
 
     // Configure Jet parameters
     float pTmin_jet = 250; // GeV
@@ -85,6 +94,12 @@ int main()
         std::vector<fastjet::PseudoJet> fastjet_particles;
         int particle_num=0;
 
+        // prepare for filling
+        jet_pt.clear(); jet_eta.clear(); jet_phi.clear(); jet_m.clear();
+        jet_trk_pT.clear(); jet_trk_eta.clear(); jet_trk_phi.clear(); jet_trk_q.clear(); jet_trk_d0.clear(); jet_trk_z0.clear(); jet_trk_origin.clear(); jet_trk_pid.clear();
+        trk_pT.clear(); trk_eta.clear(); trk_phi.clear(); trk_q.clear(); trk_d0.clear(); trk_z0.clear(); trk_origin.clear(); trk_pid.clear();
+
+
         // Loop through particles in the event
         for(int j=0;j<pythia.event.size();j++){
             auto &p = pythia.event[j];
@@ -99,11 +114,20 @@ int main()
             fastjet::PseudoJet fj(p.px(), p.py(), p.pz(), p.e());
             fj.set_user_index(particle_num-1); // Subtract 1 to become 0 based
             fastjet_particles.push_back(fj);
-        }
 
-        // prepare for filling
-        jet_pt.clear(); jet_eta.clear(); jet_phi.clear(); jet_m.clear();
-        trk_pT.clear(); trk_eta.clear(); trk_phi.clear(); trk_m.clear(); trk_q.clear(); trk_d0.clear(); trk_z0.clear(); trk_origin.clear(); trk_fromDown.clear();
+            // Fill trk vector with all fastjet candidates
+            trk_pT.push_back(p.pT());
+            trk_eta.push_back(p.eta());
+            trk_phi.push_back(p.phi());
+            trk_q.push_back(p.charge());
+            double d0,z0; find_ip(p.pT(),p.eta(),p.phi(),p.xProd(),p.yProd(),p.zProd(),d0,z0);
+            trk_d0.push_back(d0);
+            trk_z0.push_back(z0);
+            int bcflag = 0;
+            int origin = trace_origin_top(pythia.event,j,bcflag);
+            trk_origin.push_back(origin);
+            trk_pid.push_back(p.id());
+        }
 
         // Cluster particles using fastjet
         fastjet::ClusterSequence clustSeq(fastjet_particles, jetDefs["fatjet"]);
@@ -114,40 +138,36 @@ int main()
             jet_pt.push_back(jet.pt()); jet_eta.push_back(jet.eta()); jet_phi.push_back(jet.phi()); jet_m.push_back(jet.m());
 
             // Temporary vectors with jet constituent info
-            std::vector<float> trk_pT_tmp, trk_eta_tmp, trk_phi_tmp, trk_m_tmp, trk_q_tmp, trk_d0_tmp, trk_z0_tmp;
-            std::vector<int> trk_origin_tmp, trk_fromDown_tmp;
+            std::vector<float> jet_trk_pT_tmp, jet_trk_eta_tmp, jet_trk_phi_tmp, jet_trk_q_tmp, jet_trk_d0_tmp, jet_trk_z0_tmp;
+            std::vector<int> jet_trk_origin_tmp, jet_trk_pid_tmp;
 
             // Loop through jet constituents
             for (auto trk:jet.constituents()) {
                 int idx = trk.user_index();
                 auto &p = pythia.event[idx];
-                trk_pT_tmp.push_back(p.pT());
-                trk_eta_tmp.push_back(p.eta());
-                trk_phi_tmp.push_back(p.phi());
-                trk_m_tmp.push_back(p.m());
-                trk_q_tmp.push_back(p.charge());
+                jet_trk_pT_tmp.push_back(p.pT());
+                jet_trk_eta_tmp.push_back(p.eta());
+                jet_trk_phi_tmp.push_back(p.phi());
+                jet_trk_q_tmp.push_back(p.charge());
                 double d0,z0; find_ip(p.pT(),p.eta(),p.phi(),p.xProd(),p.yProd(),p.zProd(),d0,z0);
-                trk_d0_tmp.push_back(d0);
-                trk_z0_tmp.push_back(z0);
+                jet_trk_d0_tmp.push_back(d0);
+                jet_trk_z0_tmp.push_back(z0);
 
                 int bcflag = 0;
                 int origin = trace_origin_top(pythia.event,idx,bcflag);
-                trk_origin_tmp.push_back(origin);
-
-                int fromDown = trace_origin_down(pythia.event,idx);
-                trk_fromDown_tmp.push_back(fromDown);
+                jet_trk_origin_tmp.push_back(origin);
+                jet_trk_pid_tmp.push_back(p.id());
 
             } // End loop through trks
 
-            trk_pT.push_back(trk_pT_tmp);
-            trk_eta.push_back(trk_eta_tmp);
-            trk_phi.push_back(trk_phi_tmp);
-            trk_m.push_back(trk_m_tmp);
-            trk_q.push_back(trk_q_tmp);
-            trk_d0.push_back(trk_d0_tmp);
-            trk_z0.push_back(trk_z0_tmp);
-            trk_origin.push_back(trk_origin_tmp);
-            trk_fromDown.push_back(trk_fromDown_tmp);
+            jet_trk_pT.push_back(jet_trk_pT_tmp);
+            jet_trk_eta.push_back(jet_trk_eta_tmp);
+            jet_trk_phi.push_back(jet_trk_phi_tmp);
+            jet_trk_q.push_back(jet_trk_q_tmp);
+            jet_trk_d0.push_back(jet_trk_d0_tmp);
+            jet_trk_z0.push_back(jet_trk_z0_tmp);
+            jet_trk_origin.push_back(jet_trk_origin_tmp);
+            jet_trk_pid.push_back(jet_trk_pid_tmp);
 
         } // End loop through jets
 
