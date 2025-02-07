@@ -3,7 +3,7 @@ import awkward as ak
 import numpy as np
 import torch
 
-tag = "_L_100k"
+tag = "_L_10k"
 
 with open("data"+tag+".pkl","rb") as f:
     data_dict = pickle.load( f )
@@ -60,7 +60,7 @@ for batch in range(num_batches):
 
     trk_feat_list = [x[:,:,np.newaxis] for x in trk_feat_list]
     trk_feats_combined = ak.concatenate(trk_feat_list, axis=2)
-        
+
     jet_tensor = torch.tensor(jet_feats[batch*batch_size:(batch+1)*batch_size], dtype=torch.float32)
     jet_trk_tensor = torch.tensor(jet_trk_feats_combined, dtype=torch.float32)
     trk_tensor = torch.tensor(trk_feats_combined, dtype=torch.float32)
