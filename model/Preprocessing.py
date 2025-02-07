@@ -7,26 +7,38 @@ import matplotlib.colors as mcolors
 from sklearn.metrics import r2_score
 import pickle
 
+tag = "_L_10k"
+
 print("Reading Samples...")
 
 # Open Pythia file
-with uproot.open("../pythia/dataset.root:fastjet") as f:
+with uproot.open("../pythia/dataset"+tag+".root:fastjet") as f:
+    #print(f.keys())
     jet_pt = f['jet_pt'].array()
     jet_eta = f['jet_eta'].array()
     jet_phi = f['jet_phi'].array()
     jet_m = f['jet_m'].array()
     
+    jet_trk_pt = f['jet_trk_pt'].array()
+    jet_trk_eta = f['jet_trk_eta'].array()
+    jet_trk_phi = f['jet_trk_phi'].array()
+    jet_trk_q = f['jet_trk_q'].array()
+    jet_trk_d0 = f['jet_trk_d0'].array()
+    jet_trk_z0 = f['jet_trk_z0'].array()
+    jet_trk_pid = f['jet_trk_pid'].array()
+    jet_trk_origin = f['jet_trk_origin'].array()
+    
     trk_pt = f['trk_pt'].array()
     trk_eta = f['trk_eta'].array()
     trk_phi = f['trk_phi'].array()
-    trk_m = f['trk_m'].array()
     trk_q = f['trk_q'].array()
     trk_d0 = f['trk_d0'].array()
     trk_z0 = f['trk_z0'].array()
-
+    trk_pid = f['trk_pid'].array()
     trk_origin = f['trk_origin'].array()
 
-with uproot.open("../madgraph/labels.root:labels") as f:
+with uproot.open("../madgraph/labels"+tag+".root:labels") as f:
+    #print(f.keys())
     top_px = f['top_px'].array()
     top_py = f['top_py'].array()
     top_pz = f['top_pz'].array()
@@ -37,6 +49,7 @@ with uproot.open("../madgraph/labels.root:labels") as f:
     costheta = f['costheta'].array()
 
 # Initialize output features
+selected_events = []
 
 # Jet Feats
 selected_jet_pt = []
@@ -51,19 +64,9 @@ selected_trk_phi = []
 selected_trk_q = []
 selected_trk_d0 = []
 selected_trk_z0 = []
+selected_trk_pid = []
 selected_trk_origin = []
 
-# Label
-selected_top_px = []
-selected_top_py = []
-selected_top_pz = []
-selected_top_E = []
-selected_down_px = []
-selected_down_py = []
-selected_down_pz = []
-selected_costheta = []
-
-# Cuts used during preprocessing
 deltaR_cut = 1.0
 
 # Initialize lists for plotting
@@ -90,6 +93,7 @@ for i in range(num_events):
     # Ensure at least one fat jet
     if len(jet_pt[i])<1:
         missing_jet+=1
+        selected_events.append(False)
         continue
 
     # Save parton 3-Vector
@@ -105,10 +109,12 @@ for i in range(num_events):
 
     if abs(parton.deltaR(candidate))>deltaR_cut:
         cutflow_deltaR+=1
+        selected_events.append(False)
         continue
 
     # Closest jet in deltaR to parton is matched jet
     matched_jet = candidate
+    selected_events.append(True)
 
     # Fill lists for plotting
     pt_partons.append(parton.pt)
@@ -118,16 +124,13 @@ for i in range(num_events):
     deltaPhi.append(parton.deltaphi(matched_jet))
     
     # Calculate Truth Origins
-    weights = trk_pt[i][argmin]
-    origins = trk_origin[i][argmin]
-    
+    weights = jet_trk_pt[i][argmin]
+    origins = jet_trk_origin[i][argmin]
     fromTop = origins==6 
     fromW = origins==24
     fromHadronic=fromTop|fromW
-    
     unweighted = ak.mean(fromHadronic,axis=0)
     weighted = ak.mean(fromHadronic,axis=0,weight=weights)
-    
     unweighted_origins.append(unweighted)
     weighted_origins.append(weighted)
     
@@ -139,27 +142,19 @@ for i in range(num_events):
     selected_jet_m.append(jet_m[i][argmin])
 
     # Trk Feats
-    selected_trk_pt.append(trk_pt[i][argmin])
-    selected_trk_eta.append(trk_eta[i][argmin])
-    selected_trk_phi.append(trk_phi[i][argmin])
-    selected_trk_q.append(trk_q[i][argmin])
-    selected_trk_d0.append(trk_d0[i][argmin])
-    selected_trk_z0.append(trk_z0[i][argmin])
-    selected_trk_origin.append(trk_origin[i][argmin])
+    selected_trk_pt.append(jet_trk_pt[i][argmin])
+    selected_trk_eta.append(jet_trk_eta[i][argmin])
+    selected_trk_phi.append(jet_trk_phi[i][argmin])
+    selected_trk_q.append(jet_trk_q[i][argmin])
+    selected_trk_d0.append(jet_trk_d0[i][argmin])
+    selected_trk_z0.append(jet_trk_z0[i][argmin])
+    selected_trk_pid.append(jet_trk_pid[i][argmin])
+    selected_trk_origin.append(jet_trk_origin[i][argmin])
 
-    # Label
-    selected_top_px.append(top_px[i])
-    selected_top_py.append(top_py[i])
-    selected_top_pz.append(top_pz[i])
-    selected_top_E.append(top_E[i])
-    selected_down_px.append(down_px[i])
-    selected_down_py.append(down_py[i])
-    selected_down_pz.append(down_pz[i])
-    selected_costheta.append(costheta[i])
-    
-print()
+print()    
 print("\tEvents without reco jet: ", missing_jet, "/", num_events)
 print("\tDeltaR Cutflow: ", cutflow_deltaR, "/", num_events-missing_jet)
+print()
 
 plt.title("Fraction of Tracks Originating From Top or W+")
 plt.hist(unweighted_origins,bins=50,range=(0,1),color='r',histtype='step',label="Unweighted")
@@ -208,23 +203,34 @@ jet_phi = ak.Array(selected_jet_phi)
 jet_m = ak.Array(selected_jet_m)
 
 # Trk Feats
-trk_pt = ak.Array(selected_trk_pt)
-trk_eta = ak.Array(selected_trk_eta)
-trk_phi = ak.Array(selected_trk_phi)
-trk_q = ak.Array(selected_trk_q)
-trk_d0 = ak.Array(selected_trk_d0)
-trk_z0 = ak.Array(selected_trk_z0)
-trk_origin = ak.Array(selected_trk_origin)
+jet_trk_pt = ak.Array(selected_trk_pt)
+jet_trk_eta = ak.Array(selected_trk_eta)
+jet_trk_phi = ak.Array(selected_trk_phi)
+jet_trk_q = ak.Array(selected_trk_q)
+jet_trk_d0 = ak.Array(selected_trk_d0)
+jet_trk_z0 = ak.Array(selected_trk_z0)
+jet_trk_pid = ak.Array(selected_trk_pid)
+jet_trk_origin = ak.Array(selected_trk_origin)
+
+# Global Trk Feats
+trk_pt = trk_pt[selected_events]
+trk_eta = trk_eta[selected_events]
+trk_phi = trk_phi[selected_events]
+trk_q = trk_q[selected_events]
+trk_d0 = trk_d0[selected_events]
+trk_z0 = trk_z0[selected_events]
+trk_pid = trk_pid[selected_events]
+trk_origin = trk_origin[selected_events]
 
 # Label
-top_px = ak.Array(selected_top_px)
-top_py = ak.Array(selected_top_py)
-top_pz = ak.Array(selected_top_pz)
-top_E = ak.Array(selected_top_E)
-down_px = ak.Array(selected_down_px)
-down_py = ak.Array(selected_down_py)
-down_pz = ak.Array(selected_down_pz)
-costheta = ak.Array(selected_costheta)
+top_px = top_px[selected_events]
+top_py = top_py[selected_events]
+top_pz = top_pz[selected_events]
+top_E = top_E[selected_events]
+down_px = down_px[selected_events]
+down_py = down_py[selected_events]
+down_pz = down_pz[selected_events]
+costheta = costheta[selected_events]
 
 norm = False
 if norm:
@@ -232,36 +238,47 @@ if norm:
     jet_eta = (jet_eta-ak.mean(jet_eta))/ak.std(jet_eta)
     jet_phi = (jet_phi-ak.mean(jet_phi))/ak.std(jet_phi)
     jet_m = (jet_m-ak.mean(jet_m))/ak.std(jet_m)
+    
+    jet_trk_pt = (jet_trk_pt-ak.mean(jet_trk_pt))/ak.std(jet_trk_pt)
+    jet_trk_eta = (jet_trk_eta-ak.mean(jet_trk_eta))/ak.std(jet_trk_eta)
+    jet_trk_phi = (jet_trk_phi-ak.mean(jet_trk_phi))/ak.std(jet_trk_phi)
+    jet_trk_q = (jet_trk_q-ak.mean(jet_trk_q))/ak.std(jet_trk_q)
+    jet_trk_d0 = (jet_trk_d0-ak.mean(jet_trk_d0))/ak.std(jet_trk_d0)
+    jet_trk_z0 = (jet_trk_z0-ak.mean(jet_trk_z0))/ak.std(jet_trk_z0)
+    
     trk_pt = (trk_pt-ak.mean(trk_pt))/ak.std(trk_pt)
     trk_eta = (trk_eta-ak.mean(trk_eta))/ak.std(trk_eta)
     trk_phi = (trk_phi-ak.mean(trk_phi))/ak.std(trk_phi)
     trk_q = (trk_q-ak.mean(trk_q))/ak.std(trk_q)
     trk_d0 = (trk_d0-ak.mean(trk_d0))/ak.std(trk_d0)
     trk_z0 = (trk_z0-ak.mean(trk_z0))/ak.std(trk_z0)
-    #trk_origin = (trk_origin-ak.mean(trk_origin))/ak.std(trk_origin)
 
 jet_feat_list = [jet_pt,jet_eta,jet_phi,jet_m]
 jet_feat_list = [x[:,np.newaxis] for x in jet_feat_list]
 jet_feats = ak.concatenate(jet_feat_list, axis=1)
 
-trk_feat_list = [trk_pt,trk_eta,trk_phi,trk_q,trk_d0,trk_z0]
+jet_trk_feat_list = [jet_trk_pt,jet_trk_eta,jet_trk_phi,jet_trk_q,jet_trk_d0,jet_trk_z0,jet_trk_pid,jet_trk_origin]
+jet_trk_feat_list = [x[:,:,np.newaxis] for x in jet_trk_feat_list]
+jet_trk_feats = ak.concatenate(jet_trk_feat_list, axis=2)
+
+trk_feat_list = [trk_pt,trk_eta,trk_phi,trk_q,trk_d0,trk_z0,trk_pid,trk_origin]
 trk_feat_list = [x[:,:,np.newaxis] for x in trk_feat_list]
 trk_feats = ak.concatenate(trk_feat_list, axis=2)
 
-label_list = [top_px,top_py,top_pz,top_E,down_px,down_py,down_pz]
+label_list = [top_px,top_py,top_pz,top_E,down_px,down_py,down_pz,costheta]
 label_list = [x[:,np.newaxis] for x in label_list]
 labels = ak.concatenate(label_list, axis=1)
 
-costheta = costheta[:,np.newaxis]
-
 data_dict = {"jet_feats": jet_feats,
+             "jet_trk_feats": jet_trk_feats,
              "trk_feats": trk_feats,
-             "label": labels,
-             "costheta": costheta,
+             "labels": labels,
             }
 
-print("Saving output...")
-with open("data.pkl","wb") as f:
+with open("data"+tag+".pkl","wb") as f:
     pickle.dump(data_dict, f)
+
+plt.hist(costheta)
+plt.show()
 
 print("Done!")
