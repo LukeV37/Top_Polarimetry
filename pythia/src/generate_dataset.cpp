@@ -77,7 +77,8 @@ int main()
     int iAbort = 0;
 
     // Begin Event Loop; generate until none left in input file
-    while (iAbort < nAbort) {
+    //while (iAbort < nAbort) {
+    for (int q; q<1; q++) {
 
         // Generate events, and check whether generation failed.
         if (!pythia.next()) {
@@ -103,6 +104,9 @@ int main()
         // Loop through particles in the event
         for(int j=0;j<pythia.event.size();j++){
             auto &p = pythia.event[j];
+
+            //std::cout << j << "\t" << p.id() << "\t" << p.status() << "\t" << p.mother1() << "\t" << p.mother2() << "\t" << p.daughter1() << "\t" << p.daughter2() << std::endl;
+
             particle_num++; // Keep track of particle num
             
             // Do not consider intermediate particles for clustering
