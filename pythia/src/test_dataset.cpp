@@ -1,5 +1,8 @@
 #include "Pythia8/Pythia.h"
 
+#include "TFile.h"
+#include "TH1.h"
+
 #include <vector>
 #include <iostream>
 
@@ -16,13 +19,16 @@ int find_top_from_event(const Pythia8::Event& event){
         int d1 = p.daughter1();
         int d2 = p.daughter2();
 
-        if(event[d1].id()==6) continue; // Skip ISR; go until top decays
+        if(event[d1].id()==6 || event[d2].id()==6) continue; // Skip ISR; go until top decays
 
+        // Loop over top daughters; look for b quark
         for (int j=d1; j<=d2; j++){
-            if(event[i].id()==5) return j; // If top decayed to b, return idx
+            if(event[j].id()==5) {
+                return i; // If top decayed to b, return idx
+            }
         }
     }
-    return 0; // Nothing good
+    return -1; // Nothing good
 }
 
 int find_down_from_W(const Pythia8::Event& event, int W_idx){
@@ -38,7 +44,7 @@ int find_down_from_W(const Pythia8::Event& event, int W_idx){
             return i;
         }
     }
-    return 0; // Nothing good
+    return -1; // Nothing good
 }
 
 int find_down_from_top(const Pythia8::Event& event, int top_idx){
@@ -57,7 +63,7 @@ int find_down_from_top(const Pythia8::Event& event, int top_idx){
             return i;
         }
     }
-    return 0; // Nothing good
+    return -1; // Nothing good
 }
 
 void traverse_history(const Pythia8::Event& event, std::vector<int> &fromDown, int current_idx){
@@ -80,11 +86,22 @@ void traverse_history(const Pythia8::Event& event, std::vector<int> &fromDown, i
     }
 
     // Special case where two daughters are stored not sequentially
-    if (d2<d1 && d2<0){
+    if (d2<d1 && d2>0){
         for (int i=0; i<2; i++){
-            if (i==0) traverse_history(event, fromDown, d1);
-            if (i==1) traverse_history(event, fromDown, d2);
-            if (i>=2) return;
+            if (fromDown[i]==0) {
+                //std::cout << "RECURSIVE CONDITION:\t" << current_idx << "\t" << d1 << "\t" << d2 << std::endl;
+                if (i==0) traverse_history(event, fromDown, d1);
+                if (i==1) traverse_history(event, fromDown, d2);
+                if (i>=2) return;
+            }
+        }
+    }
+
+    // Special case where d1>0 && d2=0
+    if (d1>0 && d2==0){
+        if (fromDown[d1]==0) {
+            //std::cout << "RECURSIVE CONDITION:\t" << current_idx << "\t" << d1 << "\t" << d2 << std::endl;
+            return traverse_history(event, fromDown, d1);
         }
     }
 
@@ -110,21 +127,25 @@ int main()
     Pythia pythia;
     pythia.readString("Beams:frameType = 4");
     pythia.readString("Beams:LHEF = ../../madgraph/pp_tt_semi_full/Events/run_01/unweighted_events.lhe.gz");
-    pythia.readString("Next:numberCount = 1");
+    pythia.readString("Next:numberCount = 100");
+
+    TFile f("histo.root","RECREATE");
+    TH1* h1 = new TH1I("d", "Num Daughters from Down Quark", 200, 0.0, 200);
 
     // If Pythia fails to initialize, exit with error.
     if (!pythia.init()) return 1;
 
-    int nEvents = 100;
-    int iEvents = 0;
+    int nAbort = 10;
+    int iAbort = 0;
 
     // Begin Event Loop; generate until none left in input file
-    while (iEvents < nEvents) {
+    while (iAbort < nAbort) {
 
         // Generate events, and check whether generation failed.
         if (!pythia.next()) {
           // If failure because reached end of file then exit event loop.
           if (pythia.info.atEndOfFile()) break;
+          iAbort++;
           continue;
         }
 
@@ -140,10 +161,17 @@ int main()
         for (int i=0;i<fromDown.size();i++){
             if (fromDown[i]==1) num_daughters++;
         }
-        std::cout << "Down Quark: num_daughters=" << num_daughters << std::endl;
+        //std::cout << "Down Quark: num_daughters=" << num_daughters << std::endl;
+        h1->Fill(num_daughters);
 
-        iEvents++;
+        if (num_daughters<7){
+            std::cout << down_idx << "\t" << down.id() << "\t" << down.status() << std::endl;
+            pythia.event.list();
+        }
+
     } // End pythia event loop
+
+    h1->Write();
 
     return 0;
 }
