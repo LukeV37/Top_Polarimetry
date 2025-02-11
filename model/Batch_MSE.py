@@ -3,7 +3,7 @@ import awkward as ak
 import numpy as np
 import torch
 
-tag = "_L_10k"
+tag = ""
 
 with open("data"+tag+".pkl","rb") as f:
     data_dict = pickle.load( f )
@@ -30,27 +30,34 @@ labels = labels[sort]
 batch_size = 64
 num_batches = int(len(labels)/batch_size)
 
-num_feats=len(trk_feats[0][0])
+num_feats=len(trk_feats[0][0])-1
 
 jet_feats_batch = []
 jet_trk_feats_batch = []
 trk_feats_batch = []
 labels_batch = []
+jet_trk_labels_batch = []
+trk_labels_batch = []
 
 for batch in range(num_batches):
     if batch%1==0:
         print("\tPadding Batch: ", batch+1, " / ", num_batches, end="\r")
     
+    # Padding number of tracks per jet
     jet_trk_feat_list = []
     for feat in range(num_feats):
         batch_jet_trk_feats = jet_trk_feats[batch*batch_size:(batch+1)*batch_size,:,feat]        
         max_num_trks = ak.max(ak.num(batch_jet_trk_feats))
         pad_feat = ak.fill_none(ak.pad_none(batch_jet_trk_feats, max_num_trks, axis=1), 0)
         jet_trk_feat_list.append(pad_feat)
-        
+
     jet_trk_feat_list = [x[:,:,np.newaxis] for x in jet_trk_feat_list]
     jet_trk_feats_combined = ak.concatenate(jet_trk_feat_list, axis=2)
+
+    jet_trk_labels = jet_trk_feats[batch*batch_size:(batch+1)*batch_size,:,-1]
+    jet_trk_labels = ak.fill_none(ak.pad_none(jet_trk_labels, max_num_trks, axis=1), 0)
         
+    # Padding number of tracks per event
     trk_feat_list = []
     for feat in range(num_feats):
         batch_trk_feats = trk_feats[batch*batch_size:(batch+1)*batch_size,:,feat]        
@@ -61,20 +68,29 @@ for batch in range(num_batches):
     trk_feat_list = [x[:,:,np.newaxis] for x in trk_feat_list]
     trk_feats_combined = ak.concatenate(trk_feat_list, axis=2)
 
+    trk_labels = trk_feats[batch*batch_size:(batch+1)*batch_size,:,-1]
+    trk_labels = ak.fill_none(ak.pad_none(trk_labels, max_num_trks, axis=1), 0)
+        
     jet_tensor = torch.tensor(jet_feats[batch*batch_size:(batch+1)*batch_size], dtype=torch.float32)
     jet_trk_tensor = torch.tensor(jet_trk_feats_combined, dtype=torch.float32)
     trk_tensor = torch.tensor(trk_feats_combined, dtype=torch.float32)
     labels_tensor = torch.tensor(labels[batch*batch_size:(batch+1)*batch_size], dtype=torch.float32)
+    jet_trk_labels_tensor = torch.unsqueeze(torch.tensor(jet_trk_labels, dtype=torch.float32),2)
+    trk_labels_tensor = torch.unsqueeze(torch.tensor(trk_labels, dtype=torch.float32),2)
         
     jet_feats_batch.append(jet_tensor)
     jet_trk_feats_batch.append(jet_trk_tensor)
     trk_feats_batch.append(trk_tensor)
     labels_batch.append(labels_tensor)
+    jet_trk_labels_batch.append(jet_trk_labels_tensor)
+    trk_labels_batch.append(trk_labels_tensor)
 
 data_dict = {"jet_batch": jet_feats_batch,
              "jet_trk_batch": jet_trk_feats_batch,
              "trk_batch": trk_feats_batch,
              "label_batch": labels_batch,
+             "jet_trk_label_batch": jet_trk_labels_batch,
+             "trk_label_batch": trk_labels_batch,
             }
 
 with open("data_batched_MSE.pkl","wb") as f:
