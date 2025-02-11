@@ -42,7 +42,7 @@ int main()
         //std::cout << down_idx << "\t" << down.id() << "\t" << down.status() << std::endl;
 
         std::vector<int> fromDown;
-        fromDown = find_down_daughters(pythia.event, down_idx);
+        fromDown = find_daughters(pythia.event, down_idx);
 
         int num_daughters=0;
         for (int i=0;i<fromDown.size();i++){

@@ -56,9 +56,9 @@ int find_down_from_top(const Pythia8::Event& event, int top_idx){
     return -1; // Nothing good
 }
 
-void traverse_history(const Pythia8::Event& event, std::vector<int> &fromDown, int current_idx){
+void traverse_history(const Pythia8::Event& event, std::vector<int> &fromMother, int current_idx){
     // Flag current particle as from down
-    fromDown[current_idx] = 1;
+    fromMother[current_idx] = 1;
 
     // Traverse Daughters
     int d1 = event[current_idx].daughter1();
@@ -68,9 +68,9 @@ void traverse_history(const Pythia8::Event& event, std::vector<int> &fromDown, i
     if (d1<=d2 && d1>0){
         for (int i=d1; d1<=d2; i++){
             if (i>d2) return; // Needed for recursion termination; otherwise odd behavior
-            if (fromDown[i]==0) {
+            if (fromMother[i]==0) {
                 //std::cout << "RECURSIVE CONDITION:\t" << current_idx << "\t" << d1 << "\t" << d2 << std::endl;
-                traverse_history(event, fromDown, i);
+                traverse_history(event, fromMother, i);
             }
         }
     }
@@ -78,10 +78,10 @@ void traverse_history(const Pythia8::Event& event, std::vector<int> &fromDown, i
     // Special case where two daughters are stored not sequentially
     if (d2<d1 && d2>0){
         for (int i=0; i<2; i++){
-            if (fromDown[i]==0) {
+            if (fromMother[i]==0) {
                 //std::cout << "RECURSIVE CONDITION:\t" << current_idx << "\t" << d1 << "\t" << d2 << std::endl;
-                if (i==0) traverse_history(event, fromDown, d1);
-                if (i==1) traverse_history(event, fromDown, d2);
+                if (i==0) traverse_history(event, fromMother, d1);
+                if (i==1) traverse_history(event, fromMother, d2);
                 if (i>=2) return;
             }
         }
@@ -89,9 +89,9 @@ void traverse_history(const Pythia8::Event& event, std::vector<int> &fromDown, i
 
     // Special case where d1>0 && d2=0
     if (d1>0 && d2==0){
-        if (fromDown[d1]==0) {
+        if (fromMother[d1]==0) {
             //std::cout << "RECURSIVE CONDITION:\t" << current_idx << "\t" << d1 << "\t" << d2 << std::endl;
-            return traverse_history(event, fromDown, d1);
+            return traverse_history(event, fromMother, d1);
         }
     }
 
@@ -102,12 +102,12 @@ void traverse_history(const Pythia8::Event& event, std::vector<int> &fromDown, i
     }
 }
 
-std::vector<int> find_down_daughters(const Pythia8::Event& event, int down_idx){
-    //Initialize fromDown vector
-    std::vector<int> fromDown(event.size(), 0);
+std::vector<int> find_daughters(const Pythia8::Event& event, int idx){
+    //Initialize fromMother vector
+    std::vector<int> fromMother(event.size(), 0);
 
     // Traverse Down History
-    traverse_history(event, fromDown, down_idx);
+    traverse_history(event, fromMother, idx);
 
-    return fromDown;
+    return fromMother;
 }
