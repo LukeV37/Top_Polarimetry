@@ -97,7 +97,7 @@ int main()
         int top_idx = find_top_from_event(pythia.event);
         int down_idx = find_down_from_top(pythia.event, top_idx);
         std::vector<int> fromDown;
-        fromDown = find_down_daughters(pythia.event, down_idx);
+        fromDown = find_daughters(pythia.event, down_idx);
 
         // Initialize vector for fastjet clustering and particle index
         std::vector<fastjet::PseudoJet> fastjet_particles;
