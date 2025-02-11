@@ -22,16 +22,22 @@ X_train_jet = data_dict["jet_batch"][0:train_split]
 X_train_jet_trk = data_dict["jet_trk_batch"][0:train_split]
 X_train_trk = data_dict["trk_batch"][0:train_split]
 y_train = data_dict["label_batch"][0:train_split]
+y_train_jet_trk = data_dict["jet_trk_label_batch"][0:train_split]
+y_train_trk = data_dict["trk_label_batch"][0:train_split]
 
 X_val_jet = data_dict["jet_batch"][train_split:test_split]
 X_val_jet_trk = data_dict["jet_trk_batch"][train_split:test_split]
 X_val_trk = data_dict["trk_batch"][train_split:test_split]
 y_val = data_dict["label_batch"][train_split:test_split]
+y_val_jet_trk = data_dict["jet_trk_label_batch"][train_split:test_split]
+y_val_trk = data_dict["trk_label_batch"][train_split:test_split]
 
 X_test_jet = data_dict["jet_batch"][test_split:]
 X_test_jet_trk = data_dict["jet_trk_batch"][test_split:]
 X_test_trk = data_dict["trk_batch"][test_split:]
 y_test = data_dict["label_batch"][test_split:]
+y_test_jet_trk = data_dict["jet_trk_label_batch"][test_split:]
+y_test_trk = data_dict["trk_label_batch"][test_split:]
 
 print("Training Batches: ", len(y_train))
 print("Validation Batches: ", len(y_val))
@@ -78,9 +84,13 @@ class Model(nn.Module):
         self.jet_trk_cross_encoder = Encoder(self.embed_dim, self.num_heads)
         self.trk_cross_encoder = Encoder(self.embed_dim, self.num_heads)
         
-        # Classification Task
+        # Regression Task
         self.regression = nn.Linear(self.embed_dim, 8)
         
+        # Classification Task
+        self.jet_trk_classification = nn.Linear(self.embed_dim, 1)
+        self.trk_classification = nn.Linear(self.embed_dim, 1)
+
     def forward(self, jets, jet_trks, trks):
         
         # Feature preprocessing layers
@@ -104,12 +114,15 @@ class Model(nn.Module):
         # Get output
         jet_embedding = torch.squeeze(jet_embedding,1)
         output = self.regression(jet_embedding)
+
+        jet_trk_classification = F.sigmoid(self.jet_trk_classification(jet_trk_embedding))
+        trk_classification = F.sigmoid(self.trk_classification(trk_embedding))
         
-        return output
+        return output, jet_trk_classification, trk_classification
 
 ### Define Training Loop
-def train(X_train_jet, X_train_jet_trk, X_train_trk, y_train, 
-          X_val_jet, X_val_jet_trk, X_val_trk, y_val, 
+def train(X_train_jet, X_train_jet_trk, X_train_trk, y_train, y_train_jet_trk, y_train_trk, 
+          X_val_jet, X_val_jet_trk, X_val_trk, y_val, y_val_jet_trk, y_val_trk, 
           epochs=40):
     
     combined_history = []
@@ -117,7 +130,7 @@ def train(X_train_jet, X_train_jet_trk, X_train_trk, y_train,
     num_train = len(X_train_jet)
     num_val = len(X_val_jet)
     
-    step_size=250
+    step_size=25
     gamma=0.1
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)
     for e in range(epochs):
@@ -127,13 +140,17 @@ def train(X_train_jet, X_train_jet_trk, X_train_trk, y_train,
         for i in range(num_train):
             optimizer.zero_grad()
             
-            output = model(X_train_jet[i].to(device), 
-                           X_train_jet_trk[i].to(device),
-                           X_train_trk[i].to(device),
-                          )
+            output, jet_trk_output, trk_output = model(X_train_jet[i].to(device), 
+                                                       X_train_jet_trk[i].to(device),
+                                                       X_train_trk[i].to(device),
+                                                      )
             
-            loss=loss_fn(output, y_train[i].to(device))
+            MSE_loss=MSE_loss_fn(output, y_train[i].to(device))
+            BCE_jet_trk_loss=BCE_jet_trk_loss_fn(jet_trk_output, y_train_jet_trk[i].to(device))
+            BCE_trk_loss=BCE_trk_loss_fn(trk_output, y_train_trk[i].to(device))
             
+            loss = MSE_loss + BCE_jet_trk_loss + BCE_trk_loss
+
             loss.backward()
             optimizer.step()
                         
@@ -144,12 +161,16 @@ def train(X_train_jet, X_train_jet_trk, X_train_trk, y_train,
         model.eval()
         cumulative_loss_val = 0
         for i in range(num_val):
-            output = model(X_val_jet[i].to(device), 
-                           X_val_jet_trk[i].to(device),
-                           X_val_trk[i].to(device),
-                          )
+            output, jet_trk_output, trk_output = model(X_val_jet[i].to(device), 
+                                                       X_val_jet_trk[i].to(device),
+                                                       X_val_trk[i].to(device),
+                                                      )
             
-            loss=loss_fn(output, y_val[i].to(device))
+            MSE_loss=MSE_loss_fn(output, y_val[i].to(device))
+            BCE_jet_trk_loss=BCE_jet_trk_loss_fn(jet_trk_output, y_val_jet_trk[i].to(device))
+            BCE_trk_loss=BCE_trk_loss_fn(trk_output, y_val_trk[i].to(device))
+            
+            loss = MSE_loss + BCE_jet_trk_loss + BCE_trk_loss
             
             cumulative_loss_val+=loss.detach().cpu().numpy().mean()
             
@@ -178,12 +199,14 @@ model = Model()
 model.to(device)
 print("Trainable Parameters :", sum(p.numel() for p in model.parameters() if p.requires_grad))
 
-Epochs=100
-optimizer = optim.AdamW(model.parameters(), lr=0.0001)
-loss_fn = nn.MSELoss()
+Epochs=50
+optimizer = optim.AdamW(model.parameters(), lr=0.001)
+MSE_loss_fn = nn.MSELoss()
+BCE_jet_trk_loss_fn = nn.BCELoss()
+BCE_trk_loss_fn = nn.BCELoss()
 
-combined_history = train(X_train_jet, X_train_jet_trk, X_train_trk, y_train, 
-                         X_val_jet, X_val_jet_trk, X_val_trk, y_val,
+combined_history = train(X_train_jet, X_train_jet_trk, X_train_trk, y_train, y_train_jet_trk, y_train_trk, 
+                         X_val_jet, X_val_jet_trk, X_val_trk, y_val, y_val_jet_trk, y_val_trk,
                          epochs=Epochs)
 torch.save(model,"model.torch")
 
@@ -193,8 +216,8 @@ plt.plot(combined_history[:,1], label="Val")
 plt.title('Loss')
 plt.legend()
 plt.yscale('log')
-plt.savefig("Loss_Curve.png")
-plt.show()
+plt.savefig("plots/Loss_Curve.png")
+#plt.show()
 
 ### Evaluate Model
 model.eval()
@@ -209,14 +232,19 @@ true_labels = np.array([]).reshape(0,8)
 
 num_test = len(X_test_jet)
 for i in range(num_test):
-    output = model(X_test_jet[i].to(device), 
+    output, jet_trk_output, trk_output = model(X_test_jet[i].to(device), 
                    X_test_jet_trk[i].to(device),
                    X_test_trk[i].to(device),
                   )
     
     torch.cuda.empty_cache()
+
+    MSE_loss=MSE_loss_fn(output, y_test[i].to(device))
+    BCE_jet_trk_loss=BCE_jet_trk_loss_fn(jet_trk_output, y_test_jet_trk[i].to(device))
+    BCE_trk_loss=BCE_trk_loss_fn(trk_output, y_test_trk[i].to(device))
     
-    loss=loss_fn(output, y_test[i].to(device))
+    loss = MSE_loss + BCE_jet_trk_loss + BCE_trk_loss
+    
     cumulative_loss_test+=loss.detach().cpu().numpy().mean()
       
     predicted_labels = np.vstack((predicted_labels,output.detach().cpu().numpy()))
@@ -243,16 +271,16 @@ for i in range(num_feats):
     plt.legend()
     plt.yscale('log')
     plt.xlabel('PU Fraction',loc='right')
-    plt.savefig("pred_1d.png")
-    plt.show()
+    plt.savefig("plots/pred_1d_"+str(i)+".png")
+    #plt.show()
 
     plt.figure()
     plt.title("Ouput Distribution using Attention Model")
     plt.hist2d(np.ravel(predicted_labels[:,i]),np.ravel(true_labels[:,i]), bins=100,norm=mcolors.LogNorm(),range=(ranges[i],ranges[i]))
     plt.xlabel('Predicted PU Fraction',loc='right')
     plt.ylabel('True PU Fraction',loc='top')
-    plt.savefig("pred_2d.png")
     diff = ranges[i][1] - ranges[i][0]
     plt.text(ranges[i][1]-0.3*diff,ranges[i][0]+0.2*diff,"$R^2$ value: "+str(round(r2_score(np.ravel(predicted_labels[:,i]),np.ravel(true_labels[:,i])),3)),backgroundcolor='r',color='k')
     #print("R^2 value: ", round(r2_score(predicted_labels[:,i],true_labels[:,i]),3))
-    plt.show()
+    plt.savefig("plots/pred_2d_"+str(i)+".png")
+    #plt.show()

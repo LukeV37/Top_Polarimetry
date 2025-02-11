@@ -27,6 +27,7 @@ with uproot.open("../pythia/dataset"+tag+".root:fastjet") as f:
     jet_trk_z0 = f['jet_trk_z0'].array()
     jet_trk_pid = f['jet_trk_pid'].array()
     jet_trk_origin = f['jet_trk_origin'].array()
+    jet_trk_fromDown = f['jet_trk_fromDown'].array()
     
     trk_pt = f['trk_pt'].array()
     trk_eta = f['trk_eta'].array()
@@ -36,6 +37,7 @@ with uproot.open("../pythia/dataset"+tag+".root:fastjet") as f:
     trk_z0 = f['trk_z0'].array()
     trk_pid = f['trk_pid'].array()
     trk_origin = f['trk_origin'].array()
+    trk_fromDown = f['trk_fromDown'].array()
 
 with uproot.open("../madgraph/labels"+tag+".root:labels") as f:
     #print(f.keys())
@@ -66,6 +68,7 @@ selected_trk_d0 = []
 selected_trk_z0 = []
 selected_trk_pid = []
 selected_trk_origin = []
+selected_trk_fromDown = []
 
 deltaR_cut = 1.0
 
@@ -150,6 +153,7 @@ for i in range(num_events):
     selected_trk_z0.append(jet_trk_z0[i][argmin])
     selected_trk_pid.append(jet_trk_pid[i][argmin])
     selected_trk_origin.append(jet_trk_origin[i][argmin])
+    selected_trk_fromDown.append(jet_trk_fromDown[i][argmin])
 
 print()    
 print("\tEvents without reco jet: ", missing_jet, "/", num_events)
@@ -163,7 +167,7 @@ plt.yscale('log')
 plt.ylabel('Num Jets')
 plt.xlabel('Fraction of Tracks From Top',loc='right')
 plt.legend()
-plt.show()
+#plt.show()
 
 #fig1, ax1 = plt.subplots()
 fig2, ax2 = plt.subplots()
@@ -192,7 +196,7 @@ ax4.hist(deltaPhi,histtype='step',bins=100,range=(-3.5,3.5),color='k')
 ax4.set_yscale("log")
 #ax4.legend()
     
-plt.show()
+#plt.show()
 
 print("Converting to Awkward Arrays...")
 
@@ -211,6 +215,7 @@ jet_trk_d0 = ak.Array(selected_trk_d0)
 jet_trk_z0 = ak.Array(selected_trk_z0)
 jet_trk_pid = ak.Array(selected_trk_pid)
 jet_trk_origin = ak.Array(selected_trk_origin)
+jet_trk_fromDown = ak.Array(selected_trk_fromDown)
 
 # Global Trk Feats
 trk_pt = trk_pt[selected_events]
@@ -221,6 +226,7 @@ trk_d0 = trk_d0[selected_events]
 trk_z0 = trk_z0[selected_events]
 trk_pid = trk_pid[selected_events]
 trk_origin = trk_origin[selected_events]
+trk_fromDown = trk_fromDown[selected_events]
 
 # Label
 top_px = top_px[selected_events]
@@ -257,11 +263,13 @@ jet_feat_list = [jet_pt,jet_eta,jet_phi,jet_m]
 jet_feat_list = [x[:,np.newaxis] for x in jet_feat_list]
 jet_feats = ak.concatenate(jet_feat_list, axis=1)
 
-jet_trk_feat_list = [jet_trk_pt,jet_trk_eta,jet_trk_phi,jet_trk_q,jet_trk_d0,jet_trk_z0,jet_trk_pid,jet_trk_origin]
+jet_trk_feat_list = [jet_trk_pt,jet_trk_eta,jet_trk_phi,jet_trk_q,jet_trk_d0,jet_trk_z0,jet_trk_pid,jet_trk_origin,jet_trk_fromDown]
+#jet_trk_feat_list = [jet_trk_pt,jet_trk_eta,jet_trk_phi,jet_trk_q,jet_trk_d0,jet_trk_z0,jet_trk_pid,jet_trk_fromDown]
 jet_trk_feat_list = [x[:,:,np.newaxis] for x in jet_trk_feat_list]
 jet_trk_feats = ak.concatenate(jet_trk_feat_list, axis=2)
 
-trk_feat_list = [trk_pt,trk_eta,trk_phi,trk_q,trk_d0,trk_z0,trk_pid,trk_origin]
+trk_feat_list = [trk_pt,trk_eta,trk_phi,trk_q,trk_d0,trk_z0,trk_pid,trk_origin,trk_fromDown]
+#trk_feat_list = [trk_pt,trk_eta,trk_phi,trk_q,trk_d0,trk_z0,trk_pid,trk_fromDown]
 trk_feat_list = [x[:,:,np.newaxis] for x in trk_feat_list]
 trk_feats = ak.concatenate(trk_feat_list, axis=2)
 
@@ -279,6 +287,6 @@ with open("data"+tag+".pkl","wb") as f:
     pickle.dump(data_dict, f)
 
 plt.hist(costheta)
-plt.show()
+#plt.show()
 
 print("Done!")
