@@ -7,7 +7,7 @@ import matplotlib.colors as mcolors
 from sklearn.metrics import r2_score
 import pickle
 
-tag = "_L_10k"
+tag = "_R_10k"
 
 print("Reading Samples...")
 
@@ -263,13 +263,15 @@ jet_feat_list = [jet_pt,jet_eta,jet_phi,jet_m]
 jet_feat_list = [x[:,np.newaxis] for x in jet_feat_list]
 jet_feats = ak.concatenate(jet_feat_list, axis=1)
 
-jet_trk_feat_list = [jet_trk_pt,jet_trk_eta,jet_trk_phi,jet_trk_q,jet_trk_d0,jet_trk_z0,jet_trk_pid,jet_trk_origin,jet_trk_fromDown]
+#jet_trk_feat_list = [jet_trk_pt,jet_trk_eta,jet_trk_phi,jet_trk_q,jet_trk_d0,jet_trk_z0,jet_trk_pid,jet_trk_origin,jet_trk_fromDown]
 #jet_trk_feat_list = [jet_trk_pt,jet_trk_eta,jet_trk_phi,jet_trk_q,jet_trk_d0,jet_trk_z0,jet_trk_pid,jet_trk_fromDown]
+jet_trk_feat_list = [jet_trk_pt,jet_trk_eta,jet_trk_phi,jet_trk_q,jet_trk_d0,jet_trk_z0,jet_trk_fromDown]
 jet_trk_feat_list = [x[:,:,np.newaxis] for x in jet_trk_feat_list]
 jet_trk_feats = ak.concatenate(jet_trk_feat_list, axis=2)
 
-trk_feat_list = [trk_pt,trk_eta,trk_phi,trk_q,trk_d0,trk_z0,trk_pid,trk_origin,trk_fromDown]
+#trk_feat_list = [trk_pt,trk_eta,trk_phi,trk_q,trk_d0,trk_z0,trk_pid,trk_origin,trk_fromDown]
 #trk_feat_list = [trk_pt,trk_eta,trk_phi,trk_q,trk_d0,trk_z0,trk_pid,trk_fromDown]
+trk_feat_list = [trk_pt,trk_eta,trk_phi,trk_q,trk_d0,trk_z0,trk_fromDown]
 trk_feat_list = [x[:,:,np.newaxis] for x in trk_feat_list]
 trk_feats = ak.concatenate(trk_feat_list, axis=2)
 
