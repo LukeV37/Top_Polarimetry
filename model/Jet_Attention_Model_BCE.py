@@ -169,6 +169,8 @@ def train(X_train_jet, X_train_jet_trk, X_train_trk, y_train, y_train_jet_trk, y
             cumulative_loss_train+=loss.detach().cpu().numpy().mean()
             
         cumulative_loss_train = cumulative_loss_train / num_train
+
+        torch.cuda.empty_cache()
         
         model.eval()
         cumulative_loss_val = 0
@@ -239,6 +241,8 @@ binary_true = []
 
 predicted_labels = np.array([]).reshape(0,1)
 true_labels = np.array([]).reshape(0,1)
+
+torch.cuda.empty_cache()
 
 num_test = len(X_test_jet)
 for i in range(num_test):
