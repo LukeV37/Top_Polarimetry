@@ -63,27 +63,46 @@ class Encoder(nn.Module):
         latent = latent + tmp
         return latent, weights
 
+class Stack(nn.Module):
+    def __init__(self, embed_dim, num_heads):
+        super(Stack, self).__init__()
+        self.jet_trk_encoder = Encoder(embed_dim, num_heads)
+        self.trk_encoder = Encoder(embed_dim, num_heads)
+        self.jet_trk_cross_encoder = Encoder(embed_dim, num_heads)
+        self.trk_cross_encoder = Encoder(embed_dim, num_heads)
+    def forward(self, jet_embedding, jet_trk_embedding, trk_embedding):
+        # Jet Track Attention
+        jet_trk_embedding, jet_trk_weights = self.jet_trk_encoder(jet_trk_embedding, jet_trk_embedding, jet_trk_embedding)
+        # Cross Attention (Local)
+        jet_embedding, cross_weights = self.jet_trk_cross_encoder(jet_embedding, jet_trk_embedding, jet_trk_embedding)
+        # Track Attention
+        trk_embedding, trk_weights = self.trk_encoder(trk_embedding, trk_embedding, trk_embedding)
+        # Cross Attention (Global)
+        jet_embedding, cross_weights = self.trk_cross_encoder(jet_embedding, trk_embedding, trk_embedding)
+        return jet_embedding, jet_trk_embedding, trk_embedding
+
 class Model(nn.Module):  
     def __init__(self):
         super(Model, self).__init__()   
         
-        self.embed_dim = 64
-        self.num_heads = 8
+        self.embed_dim = 32
+        self.num_heads = 4
         self.num_jet_feats = 4
-        self.num_trk_feats = 8
+        self.num_trk_feats = 6
         
+        # Initliazer
         self.jet_initializer = nn.Linear(self.num_jet_feats, self.embed_dim)
         self.jet_trk_initializer = nn.Linear(self.num_trk_feats, self.embed_dim)
         self.trk_initializer = nn.Linear(self.num_trk_feats, self.embed_dim)
+
+        # Transformer stack
+        self.stack1 = Stack(self.embed_dim, self.num_heads)
+        self.stack2 = Stack(self.embed_dim, self.num_heads)
+        self.stack3 = Stack(self.embed_dim, self.num_heads)
+        self.stack4 = Stack(self.embed_dim, self.num_heads)
+        self.stack5 = Stack(self.embed_dim, self.num_heads)
+        self.stack6 = Stack(self.embed_dim, self.num_heads)
            
-        # Track Encoder Stack
-        self.jet_trk_encoder = Encoder(self.embed_dim, self.num_heads)
-        self.trk_encoder = Encoder(self.embed_dim, self.num_heads)
-        
-        # Cross Encoder Stack
-        self.jet_trk_cross_encoder = Encoder(self.embed_dim, self.num_heads)
-        self.trk_cross_encoder = Encoder(self.embed_dim, self.num_heads)
-        
         # Classification Task
         self.classification = nn.Linear(self.embed_dim, 1)
         self.jet_trk_classification = nn.Linear(self.embed_dim, 1)
@@ -95,22 +114,17 @@ class Model(nn.Module):
         jet_embedding = F.gelu(self.jet_initializer(jets))
         jet_trk_embedding = F.gelu(self.jet_trk_initializer(jet_trks))
         trk_embedding = F.gelu(self.trk_initializer(trks))
-        
-        # Jet Track Attention
-        jet_trk_embedding, jet_trk_weights = self.jet_trk_encoder(jet_trk_embedding, jet_trk_embedding, jet_trk_embedding)
-    
-        # Cross Attention (Local)
         jet_embedding = torch.unsqueeze(jet_embedding, 1)
-        jet_embedding, cross_weights = self.jet_trk_cross_encoder(jet_embedding, jet_trk_embedding, jet_trk_embedding)
 
-        # Track Attention
-        trk_embedding, trk_weights = self.trk_encoder(trk_embedding, trk_embedding, trk_embedding)
+        # Transformer Stack
+        jet_embedding, jet_trk_embedding, trk_embedding = self.stack1(jet_embedding,jet_trk_embedding,trk_embedding)
+        jet_embedding, jet_trk_embedding, trk_embedding = self.stack2(jet_embedding,jet_trk_embedding,trk_embedding)
+        jet_embedding, jet_trk_embedding, trk_embedding = self.stack3(jet_embedding,jet_trk_embedding,trk_embedding)
+        jet_embedding, jet_trk_embedding, trk_embedding = self.stack4(jet_embedding,jet_trk_embedding,trk_embedding)
+        jet_embedding, jet_trk_embedding, trk_embedding = self.stack5(jet_embedding,jet_trk_embedding,trk_embedding)
+        jet_embedding, jet_trk_embedding, trk_embedding = self.stack6(jet_embedding,jet_trk_embedding,trk_embedding)
         
-        # Cross Attention (Global)
-        jet_embedding, cross_weights = self.trk_cross_encoder(jet_embedding, trk_embedding, trk_embedding)
-    
         # Get output
-        #output = 2*torch.ravel(F.sigmoid(self.regression(jet_embedding)))-1
         jet_embedding = torch.squeeze(jet_embedding,1)
         output = F.sigmoid(self.classification(jet_embedding))
         jet_trk_classification = F.sigmoid(self.jet_trk_classification(jet_trk_embedding))
@@ -260,13 +274,13 @@ R = true_labels==1
 
 plt.figure()
 #plt.hist(true_labels,histtype='step',color='r',label='True Distribution',bins=50,range=(0,1))
-plt.hist(predicted_labels[L],histtype='step',color='b',label='Left Polarized',bins=50,range=(0,1))
-plt.hist(predicted_labels[R],histtype='step',color='g',label='Right Polarized',bins=50,range=(0,1))
+plt.hist(predicted_labels[L],histtype='step',color='b',label='Left Polarized',bins=30,range=(0,1))
+plt.hist(predicted_labels[R],histtype='step',color='r',label='Right Polarized',bins=30,range=(0,1))
 
 plt.title("Predicted Ouput Distribution using Attention Model")
 plt.legend()
 #plt.yscale('log')
 plt.xlabel('IsPolarized',loc='right')
-plt.text(0.6,40,"ROC AUC: "+str(round(roc_auc_score(true_labels, predicted_labels),3)))
+plt.text(0.7,70,"ROC AUC: "+str(round(roc_auc_score(true_labels, predicted_labels),3)))
 plt.savefig("plots/pred_BCE.png")
 #plt.show()
