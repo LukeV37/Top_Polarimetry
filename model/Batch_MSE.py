@@ -3,7 +3,15 @@ import awkward as ak
 import numpy as np
 import torch
 
+<<<<<<< Updated upstream
 tag = ""
+=======
+<<<<<<< Updated upstream
+tag = "_L_10k"
+=======
+tag = "_noBoost_100k_noDown"
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
 
 with open("data"+tag+".pkl","rb") as f:
     data_dict = pickle.load( f )
@@ -93,5 +101,5 @@ data_dict = {"jet_batch": jet_feats_batch,
              "trk_label_batch": trk_labels_batch,
             }
 
-with open("data_batched_MSE.pkl","wb") as f:
+with open("data_batched_MSE"+tag+".pkl","wb") as f:
     pickle.dump(data_dict, f)
