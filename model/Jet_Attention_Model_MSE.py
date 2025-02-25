@@ -9,8 +9,13 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_score, roc_auc_score
+import os
 
-with open("data_batched_MSE.pkl","rb") as f:
+tag = "_noBoost_100k_noCharm"
+out_dir = "plots"+tag+"/"
+os.mkdir(out_dir)
+
+with open("data_batched_MSE"+tag+".pkl","rb") as f:
     data_dict = pickle.load( f )
 
 num_events = len(data_dict["label_batch"])
@@ -63,19 +68,39 @@ class Encoder(nn.Module):
         latent = latent + tmp
         return latent, weights
 
+class Stack(nn.Module):
+    def __init__(self, embed_dim, num_heads):
+        super(Stack, self).__init__()
+        self.jet_trk_encoder = Encoder(embed_dim, num_heads)
+        self.trk_encoder = Encoder(embed_dim, num_heads)
+        self.jet_trk_cross_encoder = Encoder(embed_dim, num_heads)
+        self.trk_cross_encoder = Encoder(embed_dim, num_heads)
+    def forward(self, jet_embedding, jet_trk_embedding, trk_embedding):
+        # Jet Track Attention
+        jet_trk_embedding, jet_trk_weights = self.jet_trk_encoder(jet_trk_embedding, jet_trk_embedding, jet_trk_embedding)
+        # Cross Attention (Local)
+        jet_embedding, cross_weights = self.jet_trk_cross_encoder(jet_embedding, jet_trk_embedding, jet_trk_embedding)
+        # Track Attention
+        trk_embedding, trk_weights = self.trk_encoder(trk_embedding, trk_embedding, trk_embedding)
+        # Cross Attention (Global)
+        jet_embedding, cross_weights = self.trk_cross_encoder(jet_embedding, trk_embedding, trk_embedding)
+        return jet_embedding, jet_trk_embedding, trk_embedding
+
 class Model(nn.Module):  
     def __init__(self):
         super(Model, self).__init__()   
         
-        self.embed_dim = 128
-        self.num_heads = 8
+        self.embed_dim = 32
+        self.num_heads = 4
         self.num_jet_feats = 4
-        self.num_trk_feats = 8
+        self.num_trk_feats = 6
         
+        # Initiliazer
         self.jet_initializer = nn.Linear(self.num_jet_feats, self.embed_dim)
         self.jet_trk_initializer = nn.Linear(self.num_trk_feats, self.embed_dim)
         self.trk_initializer = nn.Linear(self.num_trk_feats, self.embed_dim)
            
+<<<<<<< Updated upstream
         # Track Encoder Stack
         self.jet_trk_encoder = Encoder(self.embed_dim, self.num_heads)
         self.trk_encoder = Encoder(self.embed_dim, self.num_heads)
@@ -87,36 +112,54 @@ class Model(nn.Module):
         # Regression Task
         self.regression = nn.Linear(self.embed_dim, 8)
         
+<<<<<<< Updated upstream
+=======
+=======
+        # Transformer Stack
+        self.stack1 = Stack(self.embed_dim, self.num_heads)
+        self.stack2 = Stack(self.embed_dim, self.num_heads)
+        self.stack3 = Stack(self.embed_dim, self.num_heads)
+        self.stack4 = Stack(self.embed_dim, self.num_heads)
+
+        # Regression Task
+        self.regression = nn.Linear(self.embed_dim, 8)
+>>>>>>> Stashed changes
         # Classification Task
         self.jet_trk_classification = nn.Linear(self.embed_dim, 1)
         self.trk_classification = nn.Linear(self.embed_dim, 1)
 
+<<<<<<< Updated upstream
+=======
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
     def forward(self, jets, jet_trks, trks):
         
         # Feature preprocessing layers
         jet_embedding = F.gelu(self.jet_initializer(jets))
         jet_trk_embedding = F.gelu(self.jet_trk_initializer(jet_trks))
         trk_embedding = F.gelu(self.trk_initializer(trks))
-        
-        # Jet Track Attention
-        jet_trk_embedding, jet_trk_weights = self.jet_trk_encoder(jet_trk_embedding, jet_trk_embedding, jet_trk_embedding)
-    
-        # Cross Attention (Local)
         jet_embedding = torch.unsqueeze(jet_embedding, 1)
-        jet_embedding, cross_weights = self.jet_trk_cross_encoder(jet_embedding, jet_trk_embedding, jet_trk_embedding)
-
-        # Track Attention
-        trk_embedding, trk_weights = self.trk_encoder(trk_embedding, trk_embedding, trk_embedding)
         
-        # Cross Attention (Global)
-        jet_embedding, cross_weights = self.trk_cross_encoder(jet_embedding, trk_embedding, trk_embedding)
+        # Transformer Stack
+        jet_embedding, jet_trk_embedding, trk_embedding = self.stack1(jet_embedding,jet_trk_embedding,trk_embedding)
+        jet_embedding, jet_trk_embedding, trk_embedding = self.stack2(jet_embedding,jet_trk_embedding,trk_embedding)
+        jet_embedding, jet_trk_embedding, trk_embedding = self.stack3(jet_embedding,jet_trk_embedding,trk_embedding)
+        jet_embedding, jet_trk_embedding, trk_embedding = self.stack4(jet_embedding,jet_trk_embedding,trk_embedding)
     
         # Get output
         jet_embedding = torch.squeeze(jet_embedding,1)
         output = self.regression(jet_embedding)
+<<<<<<< Updated upstream
 
         jet_trk_classification = F.sigmoid(self.jet_trk_classification(jet_trk_embedding))
         trk_classification = F.sigmoid(self.trk_classification(trk_embedding))
+=======
+<<<<<<< Updated upstream
+=======
+        jet_trk_classification = F.sigmoid(self.jet_trk_classification(jet_trk_embedding))
+        trk_classification = F.sigmoid(self.trk_classification(trk_embedding))
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
         
         return output, jet_trk_classification, trk_classification
 
@@ -130,7 +173,15 @@ def train(X_train_jet, X_train_jet_trk, X_train_trk, y_train, y_train_jet_trk, y
     num_train = len(X_train_jet)
     num_val = len(X_val_jet)
     
+<<<<<<< Updated upstream
     step_size=25
+=======
+<<<<<<< Updated upstream
+    step_size=250
+=======
+    step_size=20
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
     gamma=0.1
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)
     for e in range(epochs):
@@ -138,6 +189,9 @@ def train(X_train_jet, X_train_jet_trk, X_train_trk, y_train, y_train_jet_trk, y
         cumulative_loss_train = 0
 
         for i in range(num_train):
+            #print("Current:", torch.cuda.memory_allocated()/1e9)
+            #print("Max:    ",torch.cuda.max_memory_reserved()/1e9)
+            #print()
             optimizer.zero_grad()
             
             output, jet_trk_output, trk_output = model(X_train_jet[i].to(device), 
@@ -155,6 +209,8 @@ def train(X_train_jet, X_train_jet_trk, X_train_trk, y_train, y_train_jet_trk, y
             optimizer.step()
                         
             cumulative_loss_train+=loss.detach().cpu().numpy().mean()
+
+            torch.cuda.empty_cache()
             
         cumulative_loss_train = cumulative_loss_train / num_train
         
@@ -173,7 +229,8 @@ def train(X_train_jet, X_train_jet_trk, X_train_trk, y_train, y_train_jet_trk, y
             loss = MSE_loss + BCE_jet_trk_loss + BCE_trk_loss
             
             cumulative_loss_val+=loss.detach().cpu().numpy().mean()
-            
+
+            torch.cuda.empty_cache()
             
         scheduler.step()
             
@@ -199,11 +256,24 @@ model = Model()
 model.to(device)
 print("Trainable Parameters :", sum(p.numel() for p in model.parameters() if p.requires_grad))
 
+<<<<<<< Updated upstream
 Epochs=50
+=======
+<<<<<<< Updated upstream
+Epochs=100
+optimizer = optim.AdamW(model.parameters(), lr=0.0001)
+loss_fn = nn.MSELoss()
+=======
+Epochs=40
+>>>>>>> Stashed changes
 optimizer = optim.AdamW(model.parameters(), lr=0.001)
 MSE_loss_fn = nn.MSELoss()
 BCE_jet_trk_loss_fn = nn.BCELoss()
 BCE_trk_loss_fn = nn.BCELoss()
+<<<<<<< Updated upstream
+=======
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
 
 combined_history = train(X_train_jet, X_train_jet_trk, X_train_trk, y_train, y_train_jet_trk, y_train_trk, 
                          X_val_jet, X_val_jet_trk, X_val_trk, y_val, y_val_jet_trk, y_val_trk,
@@ -216,8 +286,18 @@ plt.plot(combined_history[:,1], label="Val")
 plt.title('Loss')
 plt.legend()
 plt.yscale('log')
+<<<<<<< Updated upstream
 plt.savefig("plots/Loss_Curve.png")
 #plt.show()
+=======
+<<<<<<< Updated upstream
+plt.savefig("Loss_Curve.png")
+plt.show()
+=======
+plt.savefig(out_dir+"Loss_Curve.png")
+#plt.show()
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
 
 ### Evaluate Model
 model.eval()
@@ -237,15 +317,26 @@ for i in range(num_test):
                    X_test_trk[i].to(device),
                   )
     
+<<<<<<< Updated upstream
     torch.cuda.empty_cache()
+<<<<<<< Updated upstream
 
+=======
+=======
+>>>>>>> Stashed changes
     MSE_loss=MSE_loss_fn(output, y_test[i].to(device))
     BCE_jet_trk_loss=BCE_jet_trk_loss_fn(jet_trk_output, y_test_jet_trk[i].to(device))
     BCE_trk_loss=BCE_trk_loss_fn(trk_output, y_test_trk[i].to(device))
     
     loss = MSE_loss + BCE_jet_trk_loss + BCE_trk_loss
+<<<<<<< Updated upstream
+=======
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
     
     cumulative_loss_test+=loss.detach().cpu().numpy().mean()
+
+    torch.cuda.empty_cache()
       
     predicted_labels = np.vstack((predicted_labels,output.detach().cpu().numpy()))
     true_labels = np.vstack((true_labels,y_test[i].detach().cpu().numpy()))
@@ -259,9 +350,10 @@ print()
 print("Test MAE:\t", mean_absolute_error(true_labels, predicted_labels))
 print("Test RMSE:\t", root_mean_squared_error(true_labels, predicted_labels))
 
-num_feats = len(true_labels[0])
 
-ranges = [(-1000,1000),(-1000,1000),(-1000,1000),(0,1500),(-100,100),(-100,100),(-100,100),(-1,1)]
+feats = ['top_px','top_py','top_pz','top_E','down_px','down_py','down_pz','costheta']
+num_feats = len(feats)
+ranges = [(-1000,1000),(-1000,1000),(-1000,1000),(0,1500),(-300,300),(-300,300),(-300,300),(-1,1)]
 
 for i in range(num_feats):
     plt.figure()
@@ -271,8 +363,18 @@ for i in range(num_feats):
     plt.legend()
     plt.yscale('log')
     plt.xlabel('PU Fraction',loc='right')
+<<<<<<< Updated upstream
     plt.savefig("plots/pred_1d_"+str(i)+".png")
     #plt.show()
+=======
+<<<<<<< Updated upstream
+    plt.savefig("pred_1d.png")
+    plt.show()
+=======
+    plt.savefig(out_dir+"pred_1d_"+feats[i]+".png")
+    #plt.show()
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
 
     plt.figure()
     plt.title("Ouput Distribution using Attention Model")
@@ -282,5 +384,14 @@ for i in range(num_feats):
     diff = ranges[i][1] - ranges[i][0]
     plt.text(ranges[i][1]-0.3*diff,ranges[i][0]+0.2*diff,"$R^2$ value: "+str(round(r2_score(np.ravel(predicted_labels[:,i]),np.ravel(true_labels[:,i])),3)),backgroundcolor='r',color='k')
     #print("R^2 value: ", round(r2_score(predicted_labels[:,i],true_labels[:,i]),3))
+<<<<<<< Updated upstream
     plt.savefig("plots/pred_2d_"+str(i)+".png")
     #plt.show()
+=======
+<<<<<<< Updated upstream
+    plt.show()
+=======
+    plt.savefig(out_dir+"pred_2d_"+feats[i]+".png")
+    #plt.show()
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
