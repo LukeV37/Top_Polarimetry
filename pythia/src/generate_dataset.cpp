@@ -93,12 +93,23 @@ int main()
         // Write out event to a hepmc file
         toHepMC.writeNextEvent( pythia );
 
+<<<<<<< Updated upstream
         // Use depth-first-search to find down daughters
         int top_idx = find_top_from_event(pythia.event);
+=======
+<<<<<<< Updated upstream
+=======
+        // Use depth-first-search to find down daughters
+        int top_idx = find_top_from_event(pythia.event, 6);
+>>>>>>> Stashed changes
         int down_idx = find_down_from_top(pythia.event, top_idx);
         std::vector<int> fromDown;
         fromDown = find_daughters(pythia.event, down_idx);
 
+<<<<<<< Updated upstream
+=======
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
         // Initialize vector for fastjet clustering and particle index
         std::vector<fastjet::PseudoJet> fastjet_particles;
         int particle_num=0;
