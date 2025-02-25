@@ -109,7 +109,7 @@ class Event:
             self.costheta[event] = k_vect.Dot(d_vect)
             
     def write_ntuple(self, tag):
-        with uproot.recreate("labels_"+tag+".root") as f:
+        with uproot.recreate("pp_tt_semi_full_"+tag+"/labels_"+tag+".root") as f:
             f['labels'] = {"top_px": self.top_label.px,
                           "top_py": self.top_label.py,
                           "top_pz": self.top_label.pz,
@@ -127,7 +127,7 @@ dataset_tag=str(sys.argv[1])
 
 # Read input ntuple
 print("Reading lhe file...")
-with uproot.open('hard_process_'+dataset_tag+'.root:events') as f:
+with uproot.open('pp_tt_semi_full_'+dataset_tag+'/hard_process_'+dataset_tag+'.root:events') as f:
     #print(f.keys())
     px = f['px'].array()
     py = f['py'].array()
