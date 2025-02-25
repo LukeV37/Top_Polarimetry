@@ -3,6 +3,7 @@ from ROOT import TLorentzVector, TVector3
 import numpy as np
 import uproot
 import awkward as ak
+import sys
 
 class Event:
     def __init__(self):
@@ -107,8 +108,8 @@ class Event:
             #\cos\theta_d = k_vect\dot d_vect
             self.costheta[event] = k_vect.Dot(d_vect)
             
-    def write_ntuple(self):
-        with uproot.recreate("labels.root") as f:
+    def write_ntuple(self, tag):
+        with uproot.recreate("labels_"+tag+".root") as f:
             f['labels'] = {"top_px": self.top_label.px,
                           "top_py": self.top_label.py,
                           "top_pz": self.top_label.pz,
@@ -121,9 +122,12 @@ class Event:
                          }
             #f['labels'].show()
 
+# Get dataset tag
+dataset_tag=str(sys.argv[1])
+
 # Read input ntuple
 print("Reading lhe file...")
-with uproot.open('hard_process.root:events') as f:
+with uproot.open('hard_process_'+dataset_tag+'.root:events') as f:
     #print(f.keys())
     px = f['px'].array()
     py = f['py'].array()
@@ -185,5 +189,5 @@ event.nu.add_feats(np.ravel(px[mask]),np.ravel(py[mask]),np.ravel(pz[mask]),np.r
 print("Calculating Labels...")
 event.calc_labels()
 print("Writing ntuple...")
-event.write_ntuple()
+event.write_ntuple(dataset_tag)
 print("Done!")
