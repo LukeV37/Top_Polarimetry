@@ -24,6 +24,12 @@ fi
 if [ "$polarization" = "R" ]; then
   sed -i "s/generate p p > t t~, t > b j j, t~ > b~ l- vl~/generate p p > t{R} t~, t > b j j, t~ > b~ l- vl~/" proc_card.tmp
 fi
+if [ "$polarization" = "down" ]; then
+  sed -i "s/generate p p > t t~, t > b j j, t~ > b~ l- vl~/generate p p > t t~, t > b u d~, t~ > b~ l- vl~/" proc_card.tmp
+fi
+if [ "$polarization" = "charm" ]; then
+  sed -i "s/generate p p > t t~, t > b j j, t~ > b~ l- vl~/generate p p > t t~, t > b c s~, t~ > b~ l- vl~/" proc_card.tmp
+fi
 
 # Edit run card
 sed "s/\(.*\)= nevents\(.*\)/ $num_events = nevents\2/" include/run_card.dat > run_card.tmp
@@ -42,6 +48,7 @@ cp run_card.tmp "./pp_tt_semi_full_${dataset_tag}/Cards/run_card.dat"
 
 # Clean up workspace (generated automatically by madgraph binary)
 rm -f py.py
+rm -f MG5_debug
 rm *.tmp
 
 #######################
