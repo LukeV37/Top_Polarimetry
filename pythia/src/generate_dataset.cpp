@@ -17,20 +17,29 @@
 #include "include/trace_origin_top.h"
 #include "include/traverse_history.h"
 
-int main()
+int main(int argc, char *argv[])
 {
+    if (argc < 1){
+        std::cout << "Error! Must enter 1 arguments" << std::endl;
+        std::cout << "1: Dataset Tag (from MadGraph)" << std::endl;
+        return 1;
+    }
+    char *dataset_tag = argv[1];
+
+    std::string inputFile = std::string("../../madgraph/pp_tt_semi_full_")+std::string(dataset_tag)+std::string("/Events/run_01/unweighted_events.lhe.gz");
+
     // Initialize Pythia Settings
     Pythia8::Pythia pythia;
     pythia.readString("Beams:frameType = 4");
-    pythia.readString("Beams:LHEF = ../../madgraph/pp_tt_semi_full/Events/run_01/unweighted_events.lhe.gz");
-    Pythia8::Pythia8ToHepMC toHepMC("../shower.hepmc");
+    pythia.readString("Beams:LHEF = "+inputFile);
+    //Pythia8::Pythia8ToHepMC toHepMC("../shower.hepmc");
     pythia.readString("Next:numberCount = 100");
 
     // If Pythia fails to initialize, exit with error.
     if (!pythia.init()) return 1;
 
     // Initialize output ROOT file, TTree, and Branches
-    TFile *output = new TFile("../dataset.root","recreate");
+    TFile *output = new TFile(TString("../dataset_")+TString(dataset_tag)+TString(".root"),"recreate");
     TTree *FastJet = new TTree("fastjet", "fastjet");
 
     std::vector<float> jet_pt, jet_eta, jet_phi, jet_m;
@@ -91,25 +100,14 @@ int main()
         }
 
         // Write out event to a hepmc file
-        toHepMC.writeNextEvent( pythia );
+        //toHepMC.writeNextEvent( pythia );
 
-<<<<<<< Updated upstream
-        // Use depth-first-search to find down daughters
-        int top_idx = find_top_from_event(pythia.event);
-=======
-<<<<<<< Updated upstream
-=======
         // Use depth-first-search to find down daughters
         int top_idx = find_top_from_event(pythia.event, 6);
->>>>>>> Stashed changes
         int down_idx = find_down_from_top(pythia.event, top_idx);
         std::vector<int> fromDown;
         fromDown = find_daughters(pythia.event, down_idx);
 
-<<<<<<< Updated upstream
-=======
->>>>>>> Stashed changes
->>>>>>> Stashed changes
         // Initialize vector for fastjet clustering and particle index
         std::vector<fastjet::PseudoJet> fastjet_particles;
         int particle_num=0;
