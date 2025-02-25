@@ -1,4 +1,4 @@
-madgraph/pp_tt_semi_full/
+madgraph/pp_tt_semi_full*
 *.root
 *.hepmc
 *.lhe
