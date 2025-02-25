@@ -6,13 +6,15 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 from sklearn.metrics import r2_score
 import pickle
+import sys
 
-tag = "_R_10k"
+dataset_tag = str(sys.argv[1])
+outdir = str(sys.argv[2])
 
-print("Reading Samples...")
+print("Reading Sample...")
 
 # Open Pythia file
-with uproot.open("../pythia/dataset"+tag+".root:fastjet") as f:
+with uproot.open("../pythia/dataset_"+dataset_tag+".root:fastjet") as f:
     #print(f.keys())
     jet_pt = f['jet_pt'].array()
     jet_eta = f['jet_eta'].array()
@@ -39,7 +41,7 @@ with uproot.open("../pythia/dataset"+tag+".root:fastjet") as f:
     trk_origin = f['trk_origin'].array()
     trk_fromDown = f['trk_fromDown'].array()
 
-with uproot.open("../madgraph/labels"+tag+".root:labels") as f:
+with uproot.open("../madgraph/labels_"+dataset_tag+".root:labels") as f:
     #print(f.keys())
     top_px = f['top_px'].array()
     top_py = f['top_py'].array()
@@ -160,6 +162,7 @@ print("\tEvents without reco jet: ", missing_jet, "/", num_events)
 print("\tDeltaR Cutflow: ", cutflow_deltaR, "/", num_events-missing_jet)
 print()
 
+plt.figure()
 plt.title("Fraction of Tracks Originating From Top or W+")
 plt.hist(unweighted_origins,bins=50,range=(0,1),color='r',histtype='step',label="Unweighted")
 plt.hist(weighted_origins,bins=50,range=(0,1),color='b',histtype='step',label="Weighted by pT")
@@ -167,36 +170,37 @@ plt.yscale('log')
 plt.ylabel('Num Jets')
 plt.xlabel('Fraction of Tracks From Top',loc='right')
 plt.legend()
-#plt.show()
+plt.savefig(outdir+"/Fraction_from_Top.png")
 
-#fig1, ax1 = plt.subplots()
-fig2, ax2 = plt.subplots()
-fig3, ax3 = plt.subplots()
-fig4, ax4 = plt.subplots()
-    
 fig1, ax1 = plt.subplots()
 ax1.set_title("Matched Jet vs Parton pT")
 ax1.hist2d(pt_partons,pt_fat_jets, bins=100,norm=mcolors.LogNorm(),range=((200,800),(200,800)))
 ax1.set_xlabel("Parton pT")
 ax1.set_ylabel("Fat Jet pT")
 ax1.text(600,300,"$R^2$ value: "+str(round(r2_score(pt_partons,pt_fat_jets),3)),backgroundcolor='r',color='k')
+plt.savefig(outdir+"/Matching_pT.png")
 
+fig2, ax2 = plt.subplots()
 ax2.set_title("DeltaR between Matched Jet and Parton")
 ax2.hist(deltaR,histtype='step',bins=100,range=(0,4),color='k')
 ax2.set_yscale("log")
 #ax2.legend()
+plt.savefig(outdir+"/Matching_DeltaR.png")
 
+fig3, ax3 = plt.subplots()
 ax3.set_title("DeltaEta between Matched Jet and Parton")
 ax3.hist(deltaEta,histtype='step',bins=100,range=(-3.5,3.5),color='k')
 ax3.set_yscale("log")
 #ax3.legend()
+plt.savefig(outdir+"/Matching_DeltaEta.png")
 
+fig4, ax4 = plt.subplots()
 ax4.set_title("DeltaPhi between Matched Jet and Parton")
 ax4.hist(deltaPhi,histtype='step',bins=100,range=(-3.5,3.5),color='k')
 ax4.set_yscale("log")
 #ax4.legend()
+plt.savefig(outdir+"/Matching_DeltaPhi.png")
     
-#plt.show()
 
 print("Converting to Awkward Arrays...")
 
@@ -285,10 +289,48 @@ data_dict = {"jet_feats": jet_feats,
              "labels": labels,
             }
 
-with open("data"+tag+".pkl","wb") as f:
+with open("preprocessed_"+dataset_tag+".pkl","wb") as f:
     pickle.dump(data_dict, f)
 
+plt.figure()
+plt.title("CosTheta")
 plt.hist(costheta)
-#plt.show()
+plt.savefig(outdir+"/costheta.png")
+
+jet_feat_names = ["jet_pT","jet_eta","jet_phi","jet_m"]
+trk_feat_names = ["trk_pT","trk_eta","trk_phi","trk_q","trk_d0","trk_z0","trk_fromDown"]
+
+for i, var in enumerate(jet_feat_names):
+    feat=jet_feat_list[i]
+    mini=ak.mean(feat)-2*ak.std(feat)
+    maxi=ak.mean(feat)+2*ak.std(feat)
+    plt.figure()
+    plt.title(var)
+    plt.hist(ak.ravel(feat),range=(mini,maxi),histtype='step',bins=50)
+    plt.yscale('log')
+    plt.savefig(outdir+"/"+var+".png")
+    plt.close()
+
+for i, var in enumerate(trk_feat_names):
+    feat=jet_trk_feat_list[i]
+    mini=ak.mean(feat)-2*ak.std(feat)
+    maxi=ak.mean(feat)+2*ak.std(feat)
+    plt.figure()
+    plt.title(var)
+    plt.hist(ak.ravel(feat),range=(mini,maxi),histtype='step',bins=50)
+    plt.yscale('log')
+    plt.savefig(outdir+"/jet_"+var+".png")
+    plt.close()
+
+for i, var in enumerate(trk_feat_names):
+    feat=trk_feat_list[i]
+    mini=ak.mean(feat)-2*ak.std(feat)
+    maxi=ak.mean(feat)+2*ak.std(feat)
+    plt.figure()
+    plt.title(var)
+    plt.hist(ak.ravel(feat),range=(mini,maxi),histtype='step',bins=50)
+    plt.yscale('log')
+    plt.savefig(outdir+"/"+var+".png")
+    plt.close()
 
 print("Done!")
