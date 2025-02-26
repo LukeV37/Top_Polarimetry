@@ -2,18 +2,12 @@ import pickle
 import awkward as ak
 import numpy as np
 import torch
+import random
+import sys
 
-<<<<<<< Updated upstream
-tag = ""
-=======
-<<<<<<< Updated upstream
-tag = "_L_10k"
-=======
-tag = "_noBoost_100k_noDown"
->>>>>>> Stashed changes
->>>>>>> Stashed changes
+tag = str(sys.argv[1])
 
-with open("data"+tag+".pkl","rb") as f:
+with open("preprocessed_"+tag+".pkl","rb") as f:
     data_dict = pickle.load( f )
 jet_feats = data_dict["jet_feats"]
 jet_trk_feats = data_dict["jet_trk_feats"]
@@ -101,5 +95,5 @@ data_dict = {"jet_batch": jet_feats_batch,
              "trk_label_batch": trk_labels_batch,
             }
 
-with open("data_batched_MSE"+tag+".pkl","wb") as f:
+with open("data_batched_MSE_"+tag+".pkl","wb") as f:
     pickle.dump(data_dict, f)

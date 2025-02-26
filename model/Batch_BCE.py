@@ -2,18 +2,20 @@ import pickle
 import awkward as ak
 import numpy as np
 import torch
+import random
+import sys
 
-tag1 = "_L_10k"
-tag2 = "_R_10k"
+tag1 = str(sys.argv[1])
+tag2 = str(sys.argv[2])
 
-with open("data"+tag1+".pkl","rb") as f:
+with open("preprocessed_"+tag1+".pkl","rb") as f:
     data_dict_L = pickle.load( f )
 jet_feats_L = data_dict_L["jet_feats"]
 jet_trk_feats_L = data_dict_L["jet_trk_feats"]
 trk_feats_L = data_dict_L["trk_feats"]
 labels_L = ak.zeros_like(jet_feats_L[:,0])[:,np.newaxis]
 
-with open("data"+tag2+".pkl","rb") as f:
+with open("preprocessed_"+tag2+".pkl","rb") as f:
     data_dict_R = pickle.load( f )
 jet_feats_R = data_dict_R["jet_feats"]
 jet_trk_feats_R = data_dict_R["jet_trk_feats"]
@@ -96,6 +98,10 @@ for batch in range(num_batches):
     jet_trk_labels_batch.append(jet_trk_labels_tensor)
     trk_labels_batch.append(trk_labels_tensor)
 
+#temp=list(zip(jet_feats_batch,jet_trk_feats_batch,trk_feats_batch,labels_batch,jet_trk_labels_batch,trk_labels_batch))
+#random.shuffle(temp)
+#jet_feats_batch,jet_trk_feats_batch,trk_feats_batch,labels_batch,jet_trk_labels_batch,trk_labels_batch=zip(*temp)
+
 data_dict = {"jet_batch": jet_feats_batch,
              "jet_trk_batch": jet_trk_feats_batch,
              "trk_batch": trk_feats_batch,
@@ -104,5 +110,5 @@ data_dict = {"jet_batch": jet_feats_batch,
              "trk_label_batch": trk_labels_batch,
             }
 
-with open("data_batched_combined.pkl","wb") as f:
+with open("data_batched_combined_"+tag1+"_"+tag2+".pkl","wb") as f:
     pickle.dump(data_dict, f)
