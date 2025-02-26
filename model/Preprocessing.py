@@ -41,7 +41,7 @@ with uproot.open("../pythia/dataset_"+dataset_tag+".root:fastjet") as f:
     trk_origin = f['trk_origin'].array()
     trk_fromDown = f['trk_fromDown'].array()
 
-with uproot.open("../madgraph/labels_"+dataset_tag+".root:labels") as f:
+with uproot.open("../madgraph/pp_tt_semi_full_"+dataset_tag+"/labels_"+dataset_tag+".root:labels") as f:
     #print(f.keys())
     top_px = f['top_px'].array()
     top_py = f['top_py'].array()
