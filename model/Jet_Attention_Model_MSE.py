@@ -11,11 +11,11 @@ import torch.optim as optim
 from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_score, roc_auc_score
 import os
 
-tag = "_noBoost_100k_noCharm"
-out_dir = "plots"+tag+"/"
+tag = "noDown"
+out_dir = "plots_"+tag+"/"
 os.mkdir(out_dir)
 
-with open("data_batched_MSE"+tag+".pkl","rb") as f:
+with open("data_batched_MSE_"+tag+".pkl","rb") as f:
     data_dict = pickle.load( f )
 
 num_events = len(data_dict["label_batch"])
