@@ -1,0 +1,6 @@
+torch
+uproot
+awkward
+numpy
+scikit-learn
+matplotlib
