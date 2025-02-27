@@ -13,6 +13,7 @@ polarization=$2
 num_events=$3
 
 # Error handling before launching event generation
+set -e
 python -c "import ROOT; import uproot; import awkward"
 
 ###########################
