@@ -92,9 +92,10 @@ class Event:
             p_tbar = p_bbar + p_lm + p_vl
 
             # Store bottom quark kinematics in lab frame
-            self.b_label.px[event] = p_b.Px()
-            self.b_label.py[event] = p_b.Py()
-            self.b_label.pz[event] = p_b.Pz()
+            norm = np.sqrt(p_b.Px()**2 + p_b.Py()**2 + p_b.Pz()**2)
+            self.b_label.px[event] = p_b.Px()/norm
+            self.b_label.py[event] = p_b.Py()/norm
+            self.b_label.pz[event] = p_b.Pz()/norm
             self.b_label.E[event]  = p_b.E()
             self.b_label.pT[event] = p_b.Pt()
             self.b_label.eta[event] = p_b.Eta()
@@ -127,9 +128,10 @@ class Event:
             #p_d.Boost(to_t_rest)
             
             # Store down quark kinematics in t rest frame
-            self.down_label.px[event] = p_d.Px()
-            self.down_label.py[event] = p_d.Py()
-            self.down_label.pz[event] = p_d.Pz()
+            norm = np.sqrt(p_d.Px()**2 + p_d.Py()**2 + p_d.Pz()**2)
+            self.down_label.px[event] = p_d.Px()/norm
+            self.down_label.py[event] = p_d.Py()/norm
+            self.down_label.pz[event] = p_d.Pz()/norm
             self.down_label.E[event]  = p_d.E()            
             self.down_label.pT[event] = p_d.Pt()
             self.down_label.eta[event] = p_d.Eta()
