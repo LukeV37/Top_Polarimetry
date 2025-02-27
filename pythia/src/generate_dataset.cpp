@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
     pythia.readString("Beams:frameType = 4");
     pythia.readString("Beams:LHEF = "+inputFile);
     //Pythia8::Pythia8ToHepMC toHepMC("../shower.hepmc");
-    pythia.readString("Next:numberCount = 100");
+    pythia.readString("Next:numberCount = 1000");
 
     // If Pythia fails to initialize, exit with error.
     if (!pythia.init()) return 1;
@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
     FastJet->Branch("jet_m", &jet_m);
 
     std::vector<std::vector<float>> jet_trk_pT, jet_trk_eta, jet_trk_phi, jet_trk_q, jet_trk_d0, jet_trk_z0;
-    std::vector<std::vector<int>> jet_trk_origin, jet_trk_pid, jet_trk_fromDown;
+    std::vector<std::vector<int>> jet_trk_origin, jet_trk_pid, jet_trk_fromDown, jet_trk_fromUp, jet_trk_fromBottom;
     FastJet->Branch("jet_trk_pt", &jet_trk_pT);
     FastJet->Branch("jet_trk_eta", &jet_trk_eta);
     FastJet->Branch("jet_trk_phi", &jet_trk_phi);
@@ -59,9 +59,11 @@ int main(int argc, char *argv[])
     FastJet->Branch("jet_trk_pid", &jet_trk_pid);
     FastJet->Branch("jet_trk_origin", &jet_trk_origin);
     FastJet->Branch("jet_trk_fromDown", &jet_trk_fromDown);
+    FastJet->Branch("jet_trk_fromUp", &jet_trk_fromUp);
+    FastJet->Branch("jet_trk_fromBottom", &jet_trk_fromBottom);
 
     std::vector<float> trk_pT, trk_eta, trk_phi, trk_q, trk_d0, trk_z0;
-    std::vector<int> trk_origin, trk_pid, trk_fromDown;
+    std::vector<int> trk_origin, trk_pid, trk_fromDown, trk_fromUp, trk_fromBottom;
     FastJet->Branch("trk_pt", &trk_pT);
     FastJet->Branch("trk_eta", &trk_eta);
     FastJet->Branch("trk_phi", &trk_phi);
@@ -71,6 +73,8 @@ int main(int argc, char *argv[])
     FastJet->Branch("trk_pid", &trk_pid);
     FastJet->Branch("trk_origin", &trk_origin);
     FastJet->Branch("trk_fromDown", &trk_fromDown);
+    FastJet->Branch("trk_fromUp", &trk_fromUp);
+    FastJet->Branch("trk_fromBottom", &trk_fromBottom);
 
     // Configure Jet parameters
     float pTmin_jet = 250; // GeV
@@ -103,10 +107,16 @@ int main(int argc, char *argv[])
         //toHepMC.writeNextEvent( pythia );
 
         // Use depth-first-search to find down daughters
+        std::vector<int> fromDown;
+        std::vector<int> fromUp;
+        std::vector<int> fromBottom;
         int top_idx = find_top_from_event(pythia.event, 6);
         int down_idx = find_down_from_top(pythia.event, top_idx);
-        std::vector<int> fromDown;
+        int up_idx = find_up_from_top(pythia.event, top_idx);
+        int bottom_idx = find_b_from_top(pythia.event, top_idx);
         fromDown = find_daughters(pythia.event, down_idx);
+        fromUp = find_daughters(pythia.event, up_idx);
+        fromBottom = find_daughters(pythia.event, bottom_idx);
 
         // Initialize vector for fastjet clustering and particle index
         std::vector<fastjet::PseudoJet> fastjet_particles;
@@ -114,8 +124,8 @@ int main(int argc, char *argv[])
 
         // prepare for filling
         jet_pt.clear(); jet_eta.clear(); jet_phi.clear(); jet_m.clear();
-        jet_trk_pT.clear(); jet_trk_eta.clear(); jet_trk_phi.clear(); jet_trk_q.clear(); jet_trk_d0.clear(); jet_trk_z0.clear(); jet_trk_origin.clear(); jet_trk_pid.clear(); jet_trk_fromDown.clear();
-        trk_pT.clear(); trk_eta.clear(); trk_phi.clear(); trk_q.clear(); trk_d0.clear(); trk_z0.clear(); trk_origin.clear(); trk_pid.clear(); trk_fromDown.clear();
+        jet_trk_pT.clear(); jet_trk_eta.clear(); jet_trk_phi.clear(); jet_trk_q.clear(); jet_trk_d0.clear(); jet_trk_z0.clear(); jet_trk_origin.clear(); jet_trk_pid.clear(); jet_trk_fromDown.clear(); jet_trk_fromUp.clear(); jet_trk_fromBottom.clear();
+        trk_pT.clear(); trk_eta.clear(); trk_phi.clear(); trk_q.clear(); trk_d0.clear(); trk_z0.clear(); trk_origin.clear(); trk_pid.clear(); trk_fromDown.clear(); trk_fromUp.clear(); trk_fromBottom.clear();
 
 
         // Loop through particles in the event
@@ -149,6 +159,8 @@ int main(int argc, char *argv[])
             trk_origin.push_back(origin);
             trk_pid.push_back(p.id());
             trk_fromDown.push_back(fromDown[j]);
+            trk_fromUp.push_back(fromUp[j]);
+            trk_fromBottom.push_back(fromBottom[j]);
         }
 
         // Cluster particles using fastjet
@@ -161,7 +173,7 @@ int main(int argc, char *argv[])
 
             // Temporary vectors with jet constituent info
             std::vector<float> jet_trk_pT_tmp, jet_trk_eta_tmp, jet_trk_phi_tmp, jet_trk_q_tmp, jet_trk_d0_tmp, jet_trk_z0_tmp;
-            std::vector<int> jet_trk_origin_tmp, jet_trk_pid_tmp, jet_trk_fromDown_tmp;
+            std::vector<int> jet_trk_origin_tmp, jet_trk_pid_tmp, jet_trk_fromDown_tmp, jet_trk_fromUp_tmp, jet_trk_fromBottom_tmp;
 
             // Loop through jet constituents
             for (auto trk:jet.constituents()) {
@@ -180,6 +192,8 @@ int main(int argc, char *argv[])
                 jet_trk_origin_tmp.push_back(origin);
                 jet_trk_pid_tmp.push_back(p.id());
                 jet_trk_fromDown_tmp.push_back(fromDown[idx]);
+                jet_trk_fromUp_tmp.push_back(fromUp[idx]);
+                jet_trk_fromBottom_tmp.push_back(fromBottom[idx]);
 
             } // End loop through trks
 
@@ -192,6 +206,8 @@ int main(int argc, char *argv[])
             jet_trk_origin.push_back(jet_trk_origin_tmp);
             jet_trk_pid.push_back(jet_trk_pid_tmp);
             jet_trk_fromDown.push_back(jet_trk_fromDown_tmp);
+            jet_trk_fromUp.push_back(jet_trk_fromUp_tmp);
+            jet_trk_fromBottom.push_back(jet_trk_fromBottom_tmp);
 
         } // End loop through jets
 
