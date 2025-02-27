@@ -12,6 +12,9 @@ dataset_tag=$1
 polarization=$2
 num_events=$3
 
+# Error handling before launching event generation
+python -c "import ROOT; import uproot; import awkward"
+
 ###########################
 ### MadGraph Generation ###
 ###########################
@@ -68,10 +71,10 @@ sed -i "${start_line},${end_line}d" "pp_tt_semi_full_${dataset_tag}/Events/run_0
 
 # Now that warning message is removed, use LHEReader.py to convert LHE file to root file
 echo "Converting lhe file to root format..."
-python3 include/LHEReader.py --input "pp_tt_semi_full_${dataset_tag}/Events/run_01/unweighted_events.lhe" --output "pp_tt_semi_full_${dataset_tag}/hard_process_${dataset_tag}.root"
+python include/LHEReader.py --input "pp_tt_semi_full_${dataset_tag}/Events/run_01/unweighted_events.lhe" --output "pp_tt_semi_full_${dataset_tag}/hard_process_${dataset_tag}.root"
 
 # Calculate labels
-python3 include/TLorentz_Labels.py $dataset_tag
+python include/TLorentz_Labels.py $dataset_tag
 
 # Clean workspace (uncompressed version no longer needed)
 rm -f "./pp_tt_semi_full_${dataset_tag}/Events/run_01/unweighted_events.lhe"
