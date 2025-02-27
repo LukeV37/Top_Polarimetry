@@ -15,9 +15,10 @@ class Event:
         self.lep = self.particle()
         self.nu = self.particle()
         
-        # Lables
+        # Labels
         self.top_label = self.particle()
         self.down_label = self.particle()
+        self.b_label = self.particle()
         self.costheta = []
         
     def __len__(self):
@@ -37,6 +38,9 @@ class Event:
             self.py = []
             self.pz = []
             self.E = []
+            self.pT = []
+            self.eta = []
+            self.phi = []
             
         def add_feats(self, px, py, pz, E):
             self.px = np.concat((self.px, ak.to_numpy(px)))
@@ -47,14 +51,28 @@ class Event:
     def calc_labels(self):
         # Initialize Labels
         self.top_label.px = np.ones_like(self.b.px)*-999
-        self.top_label.py = np.ones_like(self.b.py)*-999
-        self.top_label.pz = np.ones_like(self.b.pz)*-999
-        self.top_label.E = np.ones_like(self.b.E)*-999
+        self.top_label.py = np.ones_like(self.b.px)*-999
+        self.top_label.pz = np.ones_like(self.b.px)*-999
+        self.top_label.E = np.ones_like(self.b.px)*-999
+        self.top_label.pT = np.ones_like(self.b.px)*-999
+        self.top_label.eta = np.ones_like(self.b.px)*-999
+        self.top_label.phi = np.ones_like(self.b.px)*-999
         
         self.down_label.px = np.ones_like(self.b.px)*-999
-        self.down_label.py = np.ones_like(self.b.py)*-999
-        self.down_label.pz = np.ones_like(self.b.pz)*-999
-        self.down_label.E = np.ones_like(self.b.E)*-999
+        self.down_label.py = np.ones_like(self.b.px)*-999
+        self.down_label.pz = np.ones_like(self.b.px)*-999
+        self.down_label.E = np.ones_like(self.b.px)*-999
+        self.down_label.pT = np.ones_like(self.b.px)*-999
+        self.down_label.eta = np.ones_like(self.b.px)*-999
+        self.down_label.phi = np.ones_like(self.b.px)*-999
+
+        self.b_label.px = np.ones_like(self.b.px)*-999
+        self.b_label.py = np.ones_like(self.b.px)*-999
+        self.b_label.pz = np.ones_like(self.b.px)*-999
+        self.b_label.E = np.ones_like(self.b.px)*-999
+        self.b_label.pT = np.ones_like(self.b.px)*-999
+        self.b_label.eta = np.ones_like(self.b.px)*-999
+        self.b_label.phi = np.ones_like(self.b.px)*-999
         
         self.costheta = np.ones_like(self.b.px)*-999
         
@@ -73,19 +91,31 @@ class Event:
             p_t = p_b + p_d + p_u 
             p_tbar = p_bbar + p_lm + p_vl
 
+            # Store bottom quark kinematics in lab frame
+            self.b_label.px[event] = p_b.Px()
+            self.b_label.py[event] = p_b.Py()
+            self.b_label.pz[event] = p_b.Pz()
+            self.b_label.E[event]  = p_b.E()
+            self.b_label.pT[event] = p_b.Pt()
+            self.b_label.eta[event] = p_b.Eta()
+            self.b_label.phi[event] = p_b.Phi()
+
             #Construct Lorentz boost to t-tbar CM frame 
             to_ttbar_rest = -(p_t + p_tbar).BoostVector()
 
             #Boost vectors to t-tbar CM frame
-            p_t.Boost(to_ttbar_rest)
-            p_tbar.Boost(to_ttbar_rest)
-            p_d.Boost(to_ttbar_rest)
+            #p_t.Boost(to_ttbar_rest)
+            #p_tbar.Boost(to_ttbar_rest)
+            #p_d.Boost(to_ttbar_rest)
             
             # Store top quark kinematics in ttbar CM frame
             self.top_label.px[event] = p_t.Px()
             self.top_label.py[event] = p_t.Py()
             self.top_label.pz[event] = p_t.Pz()
             self.top_label.E[event]  = p_t.E()
+            self.top_label.pT[event] = p_t.Pt()
+            self.top_label.eta[event] = p_t.Eta()
+            self.top_label.phi[event] = p_t.Phi()
 
             #Top quark direction in t-tbar CM frame
             k_vect = p_t.Vect().Unit()
@@ -94,13 +124,16 @@ class Event:
             to_t_rest = -p_t.BoostVector()
 
             #Boost down quark to top quark rest frame
-            p_d.Boost(to_t_rest)
+            #p_d.Boost(to_t_rest)
             
             # Store down quark kinematics in t rest frame
             self.down_label.px[event] = p_d.Px()
             self.down_label.py[event] = p_d.Py()
             self.down_label.pz[event] = p_d.Pz()
             self.down_label.E[event]  = p_d.E()            
+            self.down_label.pT[event] = p_d.Pt()
+            self.down_label.eta[event] = p_d.Eta()
+            self.down_label.phi[event] = p_d.Phi()
 
             #down quark direction in top rest frame
             d_vect = p_d.Vect().Unit()
@@ -114,10 +147,23 @@ class Event:
                           "top_py": self.top_label.py,
                           "top_pz": self.top_label.pz,
                           "top_E" : self.top_label.E,
+                          "top_pT" : self.top_label.pT,
+                          "top_eta" : self.top_label.eta,
+                          "top_phi" : self.top_label.phi,
                           "down_px": self.down_label.px,
                           "down_py": self.down_label.py,
                           "down_pz": self.down_label.pz,
                           "down_E" : self.down_label.E,
+                          "down_pT" : self.down_label.pT,
+                          "down_eta" : self.down_label.eta,
+                          "down_phi" : self.down_label.phi,
+                          "bottom_px": self.b_label.px,
+                          "bottom_py": self.b_label.py,
+                          "bottom_pz": self.b_label.pz,
+                          "bottom_E" : self.b_label.E,
+                          "bottom_pT" : self.b_label.pT,
+                          "bottom_eta" : self.b_label.eta,
+                          "bottom_phi" : self.b_label.phi,
                           "costheta": self.costheta
                          }
             #f['labels'].show()
