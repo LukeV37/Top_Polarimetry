@@ -4,3 +4,4 @@ awkward
 numpy
 scikit-learn
 matplotlib
+vector
