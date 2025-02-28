@@ -98,9 +98,9 @@ for batch in range(num_batches):
     jet_trk_labels_batch.append(jet_trk_labels_tensor)
     trk_labels_batch.append(trk_labels_tensor)
 
-#temp=list(zip(jet_feats_batch,jet_trk_feats_batch,trk_feats_batch,labels_batch,jet_trk_labels_batch,trk_labels_batch))
-#random.shuffle(temp)
-#jet_feats_batch,jet_trk_feats_batch,trk_feats_batch,labels_batch,jet_trk_labels_batch,trk_labels_batch=zip(*temp)
+temp=list(zip(jet_feats_batch,jet_trk_feats_batch,trk_feats_batch,labels_batch,jet_trk_labels_batch,trk_labels_batch))
+random.shuffle(temp)
+jet_feats_batch,jet_trk_feats_batch,trk_feats_batch,labels_batch,jet_trk_labels_batch,trk_labels_batch=zip(*temp)
 
 data_dict = {"jet_batch": jet_feats_batch,
              "jet_trk_batch": jet_trk_feats_batch,
