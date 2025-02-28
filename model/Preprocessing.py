@@ -27,9 +27,11 @@ with uproot.open("../pythia/dataset_"+dataset_tag+".root:fastjet") as f:
     jet_trk_q = f['jet_trk_q'].array()
     jet_trk_d0 = f['jet_trk_d0'].array()
     jet_trk_z0 = f['jet_trk_z0'].array()
-    jet_trk_pid = f['jet_trk_pid'].array()
+    #jet_trk_pid = f['jet_trk_pid'].array()
     jet_trk_origin = f['jet_trk_origin'].array()
     jet_trk_fromDown = f['jet_trk_fromDown'].array()
+    jet_trk_fromUp = f['jet_trk_fromUp'].array()
+    jet_trk_fromBottom = f['jet_trk_fromBottom'].array()
     
     trk_pt = f['trk_pt'].array()
     trk_eta = f['trk_eta'].array()
@@ -37,9 +39,11 @@ with uproot.open("../pythia/dataset_"+dataset_tag+".root:fastjet") as f:
     trk_q = f['trk_q'].array()
     trk_d0 = f['trk_d0'].array()
     trk_z0 = f['trk_z0'].array()
-    trk_pid = f['trk_pid'].array()
-    trk_origin = f['trk_origin'].array()
-    trk_fromDown = f['trk_fromDown'].array()
+    #trk_pid = f['trk_pid'].array()
+    #trk_origin = f['trk_origin'].array()
+    #trk_fromDown = f['trk_fromDown'].array()
+    #trk_fromUp = f['trk_fromUp'].array()
+    #trk_fromBottom = f['trk_fromBottom'].array()
 
 with uproot.open("../madgraph/pp_tt_semi_full_"+dataset_tag+"/labels_"+dataset_tag+".root:labels") as f:
     #print(f.keys())
@@ -47,9 +51,21 @@ with uproot.open("../madgraph/pp_tt_semi_full_"+dataset_tag+"/labels_"+dataset_t
     top_py = f['top_py'].array()
     top_pz = f['top_pz'].array()
     top_E = f['top_E'].array()
+    top_pT = f['top_pT'].array()
+    top_eta = f['top_eta'].array()
+    top_phi = f['top_phi'].array()
     down_px = f['down_px'].array()
     down_py = f['down_py'].array()
     down_pz = f['down_pz'].array()
+    down_pT = f['down_pT'].array()
+    down_eta = f['down_eta'].array()
+    down_phi = f['down_phi'].array()
+    bottom_px = f['bottom_px'].array()
+    bottom_py = f['bottom_py'].array()
+    bottom_pz = f['bottom_pz'].array()
+    bottom_pT = f['bottom_pT'].array()
+    bottom_eta = f['bottom_eta'].array()
+    bottom_phi = f['bottom_phi'].array()
     costheta = f['costheta'].array()
 
 # Initialize output features
@@ -68,9 +84,11 @@ selected_trk_phi = []
 selected_trk_q = []
 selected_trk_d0 = []
 selected_trk_z0 = []
-selected_trk_pid = []
-selected_trk_origin = []
+#selected_trk_pid = []
+#selected_trk_origin = []
 selected_trk_fromDown = []
+selected_trk_fromUp = []
+selected_trk_fromBottom = []
 
 deltaR_cut = 1.0
 
@@ -153,9 +171,11 @@ for i in range(num_events):
     selected_trk_q.append(jet_trk_q[i][argmin])
     selected_trk_d0.append(jet_trk_d0[i][argmin])
     selected_trk_z0.append(jet_trk_z0[i][argmin])
-    selected_trk_pid.append(jet_trk_pid[i][argmin])
-    selected_trk_origin.append(jet_trk_origin[i][argmin])
+    #selected_trk_pid.append(jet_trk_pid[i][argmin])
+    #selected_trk_origin.append(jet_trk_origin[i][argmin])
     selected_trk_fromDown.append(jet_trk_fromDown[i][argmin])
+    selected_trk_fromUp.append(jet_trk_fromUp[i][argmin])
+    selected_trk_fromBottom.append(jet_trk_fromBottom[i][argmin])
 
 print()    
 print("\tEvents without reco jet: ", missing_jet, "/", num_events)
@@ -217,9 +237,11 @@ jet_trk_phi = ak.Array(selected_trk_phi)
 jet_trk_q = ak.Array(selected_trk_q)
 jet_trk_d0 = ak.Array(selected_trk_d0)
 jet_trk_z0 = ak.Array(selected_trk_z0)
-jet_trk_pid = ak.Array(selected_trk_pid)
-jet_trk_origin = ak.Array(selected_trk_origin)
+#jet_trk_pid = ak.Array(selected_trk_pid)
+#jet_trk_origin = ak.Array(selected_trk_origin)
 jet_trk_fromDown = ak.Array(selected_trk_fromDown)
+jet_trk_fromUp = ak.Array(selected_trk_fromUp)
+jet_trk_fromBottom = ak.Array(selected_trk_fromBottom)
 
 # Global Trk Feats
 trk_pt = trk_pt[selected_events]
@@ -228,9 +250,9 @@ trk_phi = trk_phi[selected_events]
 trk_q = trk_q[selected_events]
 trk_d0 = trk_d0[selected_events]
 trk_z0 = trk_z0[selected_events]
-trk_pid = trk_pid[selected_events]
-trk_origin = trk_origin[selected_events]
-trk_fromDown = trk_fromDown[selected_events]
+#trk_pid = trk_pid[selected_events]
+#trk_origin = trk_origin[selected_events]
+#trk_fromDown = trk_fromDown[selected_events]
 
 # Label
 top_px = top_px[selected_events]
@@ -240,6 +262,15 @@ top_E = top_E[selected_events]
 down_px = down_px[selected_events]
 down_py = down_py[selected_events]
 down_pz = down_pz[selected_events]
+down_pT = down_pT[selected_events]
+down_eta = down_eta[selected_events]
+down_phi = down_phi[selected_events]
+bottom_px = bottom_px[selected_events]
+bottom_py = bottom_py[selected_events]
+bottom_pz = bottom_pz[selected_events]
+bottom_pT = bottom_pT[selected_events]
+bottom_eta = bottom_eta[selected_events]
+bottom_phi = bottom_phi[selected_events]
 costheta = costheta[selected_events]
 
 norm = False
@@ -269,17 +300,17 @@ jet_feats = ak.concatenate(jet_feat_list, axis=1)
 
 #jet_trk_feat_list = [jet_trk_pt,jet_trk_eta,jet_trk_phi,jet_trk_q,jet_trk_d0,jet_trk_z0,jet_trk_pid,jet_trk_origin,jet_trk_fromDown]
 #jet_trk_feat_list = [jet_trk_pt,jet_trk_eta,jet_trk_phi,jet_trk_q,jet_trk_d0,jet_trk_z0,jet_trk_pid,jet_trk_fromDown]
-jet_trk_feat_list = [jet_trk_pt,jet_trk_eta,jet_trk_phi,jet_trk_q,jet_trk_d0,jet_trk_z0,jet_trk_fromDown]
+jet_trk_feat_list = [jet_trk_pt,jet_trk_eta,jet_trk_phi,jet_trk_q,jet_trk_d0,jet_trk_z0,jet_trk_fromDown,jet_trk_fromUp,jet_trk_fromBottom]
 jet_trk_feat_list = [x[:,:,np.newaxis] for x in jet_trk_feat_list]
 jet_trk_feats = ak.concatenate(jet_trk_feat_list, axis=2)
 
 #trk_feat_list = [trk_pt,trk_eta,trk_phi,trk_q,trk_d0,trk_z0,trk_pid,trk_origin,trk_fromDown]
 #trk_feat_list = [trk_pt,trk_eta,trk_phi,trk_q,trk_d0,trk_z0,trk_pid,trk_fromDown]
-trk_feat_list = [trk_pt,trk_eta,trk_phi,trk_q,trk_d0,trk_z0,trk_fromDown]
+trk_feat_list = [trk_pt,trk_eta,trk_phi,trk_q,trk_d0,trk_z0]
 trk_feat_list = [x[:,:,np.newaxis] for x in trk_feat_list]
 trk_feats = ak.concatenate(trk_feat_list, axis=2)
 
-label_list = [top_px,top_py,top_pz,top_E,down_px,down_py,down_pz,costheta]
+label_list = [top_px,top_py,top_pz,top_E,down_px,down_py,down_pz,down_pT,down_eta,down_phi,bottom_px,bottom_py,bottom_pz,bottom_pT,bottom_eta,bottom_phi,costheta]
 label_list = [x[:,np.newaxis] for x in label_list]
 labels = ak.concatenate(label_list, axis=1)
 
@@ -298,7 +329,8 @@ plt.hist(costheta)
 plt.savefig(outdir+"/costheta.png")
 
 jet_feat_names = ["jet_pT","jet_eta","jet_phi","jet_m"]
-trk_feat_names = ["trk_pT","trk_eta","trk_phi","trk_q","trk_d0","trk_z0","trk_fromDown"]
+jet_trk_feat_names = ["trk_pT","trk_eta","trk_phi","trk_q","trk_d0","trk_z0","trk_fromDown","trk_fromUp","trk_fromBottom"]
+trk_feat_names = ["trk_pT","trk_eta","trk_phi","trk_q","trk_d0","trk_z0"]
 
 for i, var in enumerate(jet_feat_names):
     feat=jet_feat_list[i]
@@ -311,7 +343,7 @@ for i, var in enumerate(jet_feat_names):
     plt.savefig(outdir+"/"+var+".png")
     plt.close()
 
-for i, var in enumerate(trk_feat_names):
+for i, var in enumerate(jet_trk_feat_names):
     feat=jet_trk_feat_list[i]
     mini=ak.mean(feat)-2*ak.std(feat)
     maxi=ak.mean(feat)+2*ak.std(feat)
