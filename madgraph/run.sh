@@ -48,7 +48,7 @@ cp ./include/cuts.f "./pp_tt_semi_full_${dataset_tag}/SubProcesses/"
 cp run_card.tmp "./pp_tt_semi_full_${dataset_tag}/Cards/run_card.dat"
 
 # Generate the Events!
-"./pp_tt_semi_full_${dataset_tag}/bin/generate_events"
+"./pp_tt_semi_full_${dataset_tag}/bin/generate_events" -f
 
 # Clean up workspace (generated automatically by madgraph binary)
 rm -f py.py
