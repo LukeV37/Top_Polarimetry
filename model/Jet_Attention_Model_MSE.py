@@ -11,7 +11,7 @@ import torch.optim as optim
 from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_score, roc_auc_score
 import os
 
-tag = "bottom_10k"
+tag = "U_1M"
 out_dir = "plots_"+tag+"/"
 os.mkdir(out_dir)
 
@@ -139,7 +139,7 @@ def train(X_train_jet, X_train_jet_trk, X_train_trk, y_train, y_train_jet_trk,
     num_train = len(X_train_jet)
     num_val = len(X_val_jet)
     
-    step_size=100
+    step_size=25
     gamma=0.1
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)
     for e in range(epochs):
@@ -212,7 +212,7 @@ model = Model()
 model.to(device)
 print("Trainable Parameters :", sum(p.numel() for p in model.parameters() if p.requires_grad))
 
-Epochs=400
+Epochs=100
 optimizer = optim.AdamW(model.parameters(), lr=0.001)
 MSE_loss_fn = nn.MSELoss()
 CCE_jet_trk_loss_fn = nn.CrossEntropyLoss()
@@ -228,7 +228,7 @@ plt.plot(combined_history[:,1], label="Val")
 plt.title('Loss')
 plt.legend()
 plt.yscale('log')
-plt.savefig("plots/Loss_Curve.png")
+plt.savefig(outdir+"Loss_Curve.png")
 #plt.show()
 
 ### Evaluate Model
