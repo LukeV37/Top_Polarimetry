@@ -147,6 +147,9 @@ int main(int argc, char *argv[])
             fastjet_particles.push_back(fj);
 
             // Fill trk vector with all fastjet candidates
+            // Skip soft tracks; Units GeV
+            if (p.pT() < 1.0) continue;
+
             trk_pT.push_back(p.pT());
             trk_eta.push_back(p.eta());
             trk_phi.push_back(p.phi());
@@ -179,6 +182,8 @@ int main(int argc, char *argv[])
             for (auto trk:jet.constituents()) {
                 int idx = trk.user_index();
                 auto &p = pythia.event[idx];
+                // Skip soft tracks; Units GeV
+                if (p.pT() < 1.0) continue;
                 jet_trk_pT_tmp.push_back(p.pT());
                 jet_trk_eta_tmp.push_back(p.eta());
                 jet_trk_phi_tmp.push_back(p.phi());
