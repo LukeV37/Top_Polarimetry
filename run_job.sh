@@ -12,7 +12,7 @@ source setup.sh
 # Run MadGraph Generation
 if [ "$bypass_madgraph" = false ]; then
   cd madgraph
-  ./run.sh $tag $process $num_events
+  ./run.sh $tag $process $num_runs $num_events_per_run
   cd $WORKING_DIR
 fi
 

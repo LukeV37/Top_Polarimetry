@@ -1,16 +1,18 @@
 #!/bin/bash
 
-if [ -z "$3" ]; then
-    echo "Must enter 3 agruments"
+if [ -z "$4" ]; then
+    echo "Must enter 4 agruments"
     echo "1: Dataset Tag e.g. unpolarized_10k"
     echo "2: Polarization: L, R, U"
-    echo "3: Number of Events"
+    echo "3: Number of Runs"
+    echo "4: Number of Events per Run"
     exit 1
 fi
 
 dataset_tag=$1
 polarization=$2
-num_events=$3
+num_runs=$3
+num_events_per_run=$4
 
 # Error handling before launching event generation
 set -e
@@ -36,7 +38,9 @@ if [ "$polarization" = "charm" ]; then
 fi
 
 # Edit run card
-sed "s/\(.*\)= nevents\(.*\)/ $num_events = nevents\2/" include/run_card.dat > run_card.tmp
+#sed "s/\(.*\)= nevents\(.*\)/ $num_events = nevents\2/" include/run_card.dat > run_card.tmp
+sed "s/multi_run.*/multi_run $num_runs/" include/multi_run.config > multi_run.tmp
+sed -i "s/set nevents.*/set nevents $num_events_per_run/" multi_run.tmp
 
 # Run mg5_aMC binary on the process card
 ../submodules/mg5amcnlo-v3.5.5/bin/mg5_aMC proc_card.tmp
@@ -45,14 +49,16 @@ sed "s/\(.*\)= nevents\(.*\)/ $num_events = nevents\2/" include/run_card.dat > r
 cp ./include/cuts.f "./pp_tt_semi_full_${dataset_tag}/SubProcesses/"
 
 # Copy the cards to the Cards folder
-cp run_card.tmp "./pp_tt_semi_full_${dataset_tag}/Cards/run_card.dat"
+#cp run_card.tmp "./pp_tt_semi_full_${dataset_tag}/Cards/run_card.dat"
 
 # Generate the Events!
-"./pp_tt_semi_full_${dataset_tag}/bin/generate_events" -f
+#"./pp_tt_semi_full_${dataset_tag}/bin/generate_events" -f
+"./pp_tt_semi_full_${dataset_tag}/bin/madevent" multi_run.tmp
 
 # Clean up workspace (generated automatically by madgraph binary)
 rm -f py.py
 rm -f MG5_debug
+rm -f ME5_debug
 rm *.tmp
 
 #######################
