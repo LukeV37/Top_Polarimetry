@@ -7,3 +7,4 @@ madgraph/pp_tt_semi_full*
 *.pkl
 *.png
 *.log
+model/WS*
