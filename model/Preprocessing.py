@@ -8,14 +8,25 @@ from sklearn.metrics import r2_score
 import pickle
 import sys
 
+try:
+    _=sys.argv[4]
+except:
+    print("Must enter 4 agruments")
+    print("\t1: dataset tag (from MadGraph)")
+    print("\t2: number of runs (from MadGraph)")
+    print("\t3: plotting output directory e.g. plots")
+    print("\t4: dataset output directory e.g data")
+    exit(1)
+
 dataset_tag = str(sys.argv[1])
-out_dir_plots = str(sys.argv[2])
-out_dir_data = str(sys.argv[3])
+run_num = str(sys.argv[2])
+out_dir_plots = str(sys.argv[3])
+out_dir_data = str(sys.argv[4])
 
 print("Reading Sample...")
 
 # Open Pythia file
-with uproot.open("../pythia/dataset_"+dataset_tag+".root:fastjet") as f:
+with uproot.open("../pythia/WS_"+dataset_tag+"/dataset_"+dataset_tag+"_"+run_num+".root:fastjet") as f:
     #print(f.keys())
     jet_pt = f['jet_pt'].array()
     jet_eta = f['jet_eta'].array()
@@ -46,7 +57,7 @@ with uproot.open("../pythia/dataset_"+dataset_tag+".root:fastjet") as f:
     #trk_fromUp = f['trk_fromUp'].array()
     #trk_fromBottom = f['trk_fromBottom'].array()
 
-with uproot.open("../madgraph/pp_tt_semi_full_"+dataset_tag+"/labels_"+dataset_tag+".root:labels") as f:
+with uproot.open("../madgraph/pp_tt_semi_full_"+dataset_tag+"/labels_"+dataset_tag+"_"+run_num+".root:labels") as f:
     #print(f.keys())
     top_px = f['top_px'].array()
     top_py = f['top_py'].array()
@@ -61,12 +72,18 @@ with uproot.open("../madgraph/pp_tt_semi_full_"+dataset_tag+"/labels_"+dataset_t
     down_pT = f['down_pT'].array()
     down_eta = f['down_eta'].array()
     down_phi = f['down_phi'].array()
+    down_deltaR = f['down_deltaR'].array()
+    down_deltaEta = f['down_deltaEta'].array()
+    down_deltaPhi = f['down_deltaPhi'].array()
     bottom_px = f['bottom_px'].array()
     bottom_py = f['bottom_py'].array()
     bottom_pz = f['bottom_pz'].array()
     bottom_pT = f['bottom_pT'].array()
     bottom_eta = f['bottom_eta'].array()
     bottom_phi = f['bottom_phi'].array()
+    bottom_deltaR = f['bottom_deltaR'].array()
+    bottom_deltaEta = f['bottom_deltaEta'].array()
+    bottom_deltaPhi = f['bottom_deltaPhi'].array()
     costheta = f['costheta'].array()
 
 # Initialize output features
@@ -191,7 +208,7 @@ plt.yscale('log')
 plt.ylabel('Num Jets')
 plt.xlabel('Fraction of Tracks From Top',loc='right')
 plt.legend()
-plt.savefig(out_dir_plots+"/Fraction_from_Top.png")
+plt.savefig(out_dir_plots+"/run_"+run_num+"/Fraction_from_Top.png")
 
 fig1, ax1 = plt.subplots()
 ax1.set_title("Matched Jet vs Parton pT")
@@ -199,28 +216,28 @@ ax1.hist2d(pt_partons,pt_fat_jets, bins=100,norm=mcolors.LogNorm(),range=((200,8
 ax1.set_xlabel("Parton pT")
 ax1.set_ylabel("Fat Jet pT")
 ax1.text(600,300,"$R^2$ value: "+str(round(r2_score(pt_partons,pt_fat_jets),3)),backgroundcolor='r',color='k')
-plt.savefig(out_dir_plots+"/Matching_pT.png")
+plt.savefig(out_dir_plots+"/run_"+run_num+"/Matching_pT.png")
 
 fig2, ax2 = plt.subplots()
 ax2.set_title("DeltaR between Matched Jet and Parton")
 ax2.hist(deltaR,histtype='step',bins=100,range=(0,4),color='k')
 ax2.set_yscale("log")
 #ax2.legend()
-plt.savefig(out_dir_plots+"/Matching_DeltaR.png")
+plt.savefig(out_dir_plots+"/run_"+run_num+"/Matching_DeltaR.png")
 
 fig3, ax3 = plt.subplots()
 ax3.set_title("DeltaEta between Matched Jet and Parton")
 ax3.hist(deltaEta,histtype='step',bins=100,range=(-3.5,3.5),color='k')
 ax3.set_yscale("log")
 #ax3.legend()
-plt.savefig(out_dir_plots+"/Matching_DeltaEta.png")
+plt.savefig(out_dir_plots+"/run_"+run_num+"/Matching_DeltaEta.png")
 
 fig4, ax4 = plt.subplots()
 ax4.set_title("DeltaPhi between Matched Jet and Parton")
 ax4.hist(deltaPhi,histtype='step',bins=100,range=(-3.5,3.5),color='k')
 ax4.set_yscale("log")
 #ax4.legend()
-plt.savefig(out_dir_plots+"/Matching_DeltaPhi.png")
+plt.savefig(out_dir_plots+"/run_"+run_num+"/Matching_DeltaPhi.png")
     
 
 print("Converting to Awkward Arrays...")
@@ -266,12 +283,18 @@ down_pz = down_pz[selected_events]
 down_pT = down_pT[selected_events]
 down_eta = down_eta[selected_events]
 down_phi = down_phi[selected_events]
+down_deltaR = down_deltaR[selected_events]
+down_deltaEta = down_deltaEta[selected_events]
+down_deltaPhi = down_deltaPhi[selected_events]
 bottom_px = bottom_px[selected_events]
 bottom_py = bottom_py[selected_events]
 bottom_pz = bottom_pz[selected_events]
 bottom_pT = bottom_pT[selected_events]
 bottom_eta = bottom_eta[selected_events]
 bottom_phi = bottom_phi[selected_events]
+bottom_deltaR = bottom_deltaR[selected_events]
+bottom_deltaEta = bottom_deltaEta[selected_events]
+bottom_deltaPhi = bottom_deltaPhi[selected_events]
 costheta = costheta[selected_events]
 
 norm = False
@@ -311,7 +334,7 @@ trk_feat_list = [trk_pt,trk_eta,trk_phi,trk_q,trk_d0,trk_z0]
 trk_feat_list = [x[:,:,np.newaxis] for x in trk_feat_list]
 trk_feats = ak.concatenate(trk_feat_list, axis=2)
 
-label_list = [top_px,top_py,top_pz,top_E,down_px,down_py,down_pz,down_pT,down_eta,down_phi,bottom_px,bottom_py,bottom_pz,bottom_pT,bottom_eta,bottom_phi,costheta]
+label_list = [top_px,top_py,top_pz,top_E,down_px,down_py,down_pz,down_pT,down_eta,down_phi,down_deltaR,down_deltaEta,down_deltaPhi,bottom_px,bottom_py,bottom_pz,bottom_pT,bottom_eta,bottom_phi,bottom_deltaR,bottom_deltaEta,bottom_deltaPhi,costheta]
 label_list = [x[:,np.newaxis] for x in label_list]
 labels = ak.concatenate(label_list, axis=1)
 
@@ -321,13 +344,13 @@ data_dict = {"jet_feats": jet_feats,
              "labels": labels,
             }
 
-with open(out_dir_data+"/preprocessed_"+dataset_tag+".pkl","wb") as f:
+with open(out_dir_data+"/preprocessed_"+dataset_tag+"_"+run_num+".pkl","wb") as f:
     pickle.dump(data_dict, f)
 
 plt.figure()
 plt.title("CosTheta")
 plt.hist(costheta)
-plt.savefig(out_dir_plots+"/costheta.png")
+plt.savefig(out_dir_plots+"/run_"+run_num+"/costheta.png")
 
 jet_feat_names = ["jet_pT","jet_eta","jet_phi","jet_m"]
 jet_trk_feat_names = ["trk_pT","trk_eta","trk_phi","trk_q","trk_d0","trk_z0","trk_fromDown","trk_fromUp","trk_fromBottom"]
@@ -341,7 +364,7 @@ for i, var in enumerate(jet_feat_names):
     plt.title(var)
     plt.hist(ak.ravel(feat),range=(mini,maxi),histtype='step',bins=50)
     plt.yscale('log')
-    plt.savefig(out_dir_plots+"/"+var+".png")
+    plt.savefig(out_dir_plots+"/run_"+run_num+"/"+var+".png")
     plt.close()
 
 for i, var in enumerate(jet_trk_feat_names):
@@ -352,7 +375,7 @@ for i, var in enumerate(jet_trk_feat_names):
     plt.title(var)
     plt.hist(ak.ravel(feat),range=(mini,maxi),histtype='step',bins=50)
     plt.yscale('log')
-    plt.savefig(out_dir_plots+"/jet_"+var+".png")
+    plt.savefig(out_dir_plots+"/run_"+run_num+"/jet_"+var+".png")
     plt.close()
 
 for i, var in enumerate(trk_feat_names):
@@ -363,7 +386,7 @@ for i, var in enumerate(trk_feat_names):
     plt.title(var)
     plt.hist(ak.ravel(feat),range=(mini,maxi),histtype='step',bins=50)
     plt.yscale('log')
-    plt.savefig(out_dir_plots+"/"+var+".png")
+    plt.savefig(out_dir_plots+"/run_"+run_num+"/"+var+".png")
     plt.close()
 
 print("Done!")

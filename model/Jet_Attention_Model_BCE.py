@@ -10,7 +10,9 @@ import torch.optim as optim
 
 from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_score, roc_auc_score
 
-with open("data_batched_combined.pkl","rb") as f:
+tag = "down_500k_charm_500k"
+
+with open("data_batched_combined_"+tag+".pkl","rb") as f:
     data_dict = pickle.load( f )
 
 num_events = len(data_dict["label_batch"])
@@ -70,15 +72,20 @@ class Stack(nn.Module):
         self.trk_encoder = Encoder(embed_dim, num_heads)
         self.jet_trk_cross_encoder = Encoder(embed_dim, num_heads)
         self.trk_cross_encoder = Encoder(embed_dim, num_heads)
+        self.postprocess = nn.Linear(2*embed_dim, embed_dim)
     def forward(self, jet_embedding, jet_trk_embedding, trk_embedding):
         # Jet Track Attention
         jet_trk_embedding, jet_trk_weights = self.jet_trk_encoder(jet_trk_embedding, jet_trk_embedding, jet_trk_embedding)
+        # Track Aggregation
+        #jet_trk_aggregated = torch.unsqueeze(jet_trk_embedding.sum(dim=1),1)
+        #jet_embedding = torch.cat((jet_embedding,jet_trk_aggregated),2)
+        #jet_embedding = F.relu(self.postprocess(jet_embedding))
         # Cross Attention (Local)
         jet_embedding, cross_weights = self.jet_trk_cross_encoder(jet_embedding, jet_trk_embedding, jet_trk_embedding)
         # Track Attention
-        trk_embedding, trk_weights = self.trk_encoder(trk_embedding, trk_embedding, trk_embedding)
+        #trk_embedding, trk_weights = self.trk_encoder(trk_embedding, trk_embedding, trk_embedding)
         # Cross Attention (Global)
-        jet_embedding, cross_weights = self.trk_cross_encoder(jet_embedding, trk_embedding, trk_embedding)
+        #jet_embedding, cross_weights = self.trk_cross_encoder(jet_embedding, trk_embedding, trk_embedding)
         return jet_embedding, jet_trk_embedding, trk_embedding
 
 class Model(nn.Module):  
@@ -98,10 +105,10 @@ class Model(nn.Module):
         # Transformer stack
         self.stack1 = Stack(self.embed_dim, self.num_heads)
         self.stack2 = Stack(self.embed_dim, self.num_heads)
-        self.stack3 = Stack(self.embed_dim, self.num_heads)
-        self.stack4 = Stack(self.embed_dim, self.num_heads)
-        self.stack5 = Stack(self.embed_dim, self.num_heads)
-        self.stack6 = Stack(self.embed_dim, self.num_heads)
+        #self.stack3 = Stack(self.embed_dim, self.num_heads)
+        #self.stack4 = Stack(self.embed_dim, self.num_heads)
+        #self.stack5 = Stack(self.embed_dim, self.num_heads)
+        #self.stack6 = Stack(self.embed_dim, self.num_heads)
            
         # Classification Task
         self.classification = nn.Linear(self.embed_dim, 1)
@@ -119,10 +126,10 @@ class Model(nn.Module):
         # Transformer Stack
         jet_embedding, jet_trk_embedding, trk_embedding = self.stack1(jet_embedding,jet_trk_embedding,trk_embedding)
         jet_embedding, jet_trk_embedding, trk_embedding = self.stack2(jet_embedding,jet_trk_embedding,trk_embedding)
-        jet_embedding, jet_trk_embedding, trk_embedding = self.stack3(jet_embedding,jet_trk_embedding,trk_embedding)
-        jet_embedding, jet_trk_embedding, trk_embedding = self.stack4(jet_embedding,jet_trk_embedding,trk_embedding)
-        jet_embedding, jet_trk_embedding, trk_embedding = self.stack5(jet_embedding,jet_trk_embedding,trk_embedding)
-        jet_embedding, jet_trk_embedding, trk_embedding = self.stack6(jet_embedding,jet_trk_embedding,trk_embedding)
+        #jet_embedding, jet_trk_embedding, trk_embedding = self.stack3(jet_embedding,jet_trk_embedding,trk_embedding)
+        #jet_embedding, jet_trk_embedding, trk_embedding = self.stack4(jet_embedding,jet_trk_embedding,trk_embedding)
+        #jet_embedding, jet_trk_embedding, trk_embedding = self.stack5(jet_embedding,jet_trk_embedding,trk_embedding)
+        #jet_embedding, jet_trk_embedding, trk_embedding = self.stack6(jet_embedding,jet_trk_embedding,trk_embedding)
         
         # Get output
         jet_embedding = torch.squeeze(jet_embedding,1)
@@ -157,11 +164,13 @@ def train(X_train_jet, X_train_jet_trk, X_train_trk, y_train, y_train_jet_trk, y
                                                        X_train_trk[i].to(device),
                                                       )
 
-            MSE_loss=loss_fn(output, y_train[i].to(device))
+            jet_loss=loss_fn(output, y_train[i].to(device))
             BCE_jet_trk_loss=loss_fn(jet_trk_output, y_train_jet_trk[i].to(device))
             BCE_trk_loss=loss_fn(trk_output, y_train_trk[i].to(device))
 
-            loss = MSE_loss + BCE_jet_trk_loss + BCE_trk_loss
+            #loss = jet_loss + BCE_jet_trk_loss + BCE_trk_loss
+            loss = jet_loss + BCE_jet_trk_loss
+            #loss = jet_loss
             
             loss.backward()
             optimizer.step()
@@ -180,11 +189,13 @@ def train(X_train_jet, X_train_jet_trk, X_train_trk, y_train, y_train_jet_trk, y
                                                        X_val_trk[i].to(device),
                                                       )
 
-            MSE_loss=loss_fn(output, y_val[i].to(device))
+            jet_loss=loss_fn(output, y_val[i].to(device))
             BCE_jet_trk_loss=loss_fn(jet_trk_output, y_val_jet_trk[i].to(device))
             BCE_trk_loss=loss_fn(trk_output, y_val_trk[i].to(device))
 
-            loss = MSE_loss + BCE_jet_trk_loss + BCE_trk_loss
+            #loss = jet_loss + BCE_jet_trk_loss + BCE_trk_loss
+            loss = jet_loss + BCE_jet_trk_loss
+            #loss = jet_loss
             
             cumulative_loss_val+=loss.detach().cpu().numpy().mean()
             
@@ -213,7 +224,7 @@ model = Model()
 model.to(device)
 print("Trainable Parameters :", sum(p.numel() for p in model.parameters() if p.requires_grad))
 
-Epochs=40
+Epochs=100
 optimizer = optim.AdamW(model.parameters(), lr=0.0001)
 loss_fn = nn.BCELoss()
 
@@ -253,11 +264,13 @@ for i in range(num_test):
 
     torch.cuda.empty_cache()
 
-    MSE_loss=loss_fn(output, y_test[i].to(device))
+    jet_loss=loss_fn(output, y_test[i].to(device))
     BCE_jet_trk_loss=loss_fn(jet_trk_output, y_test_jet_trk[i].to(device))
     BCE_trk_loss=loss_fn(trk_output, y_test_trk[i].to(device))
 
-    loss = MSE_loss + BCE_jet_trk_loss + BCE_trk_loss
+    #loss = jet_loss + BCE_jet_trk_loss + BCE_trk_loss
+    loss = jet_loss + BCE_jet_trk_loss
+    #loss = jet_loss
 
     cumulative_loss_test+=loss.detach().cpu().numpy().mean()
       
@@ -278,13 +291,13 @@ R = true_labels==1
 
 plt.figure()
 #plt.hist(true_labels,histtype='step',color='r',label='True Distribution',bins=50,range=(0,1))
-plt.hist(predicted_labels[L],histtype='step',color='b',label='Left Polarized',bins=30,range=(0,1))
-plt.hist(predicted_labels[R],histtype='step',color='r',label='Right Polarized',bins=30,range=(0,1))
+plt.hist(predicted_labels[L],histtype='step',color='b',label='Down-Type',bins=30,range=(0,1))
+plt.hist(predicted_labels[R],histtype='step',color='r',label='Charm-Type',bins=30,range=(0,1))
 
 plt.title("Predicted Ouput Distribution using Attention Model")
 plt.legend()
 #plt.yscale('log')
-plt.xlabel('IsPolarized',loc='right')
+plt.xlabel('isCharm',loc='right')
 plt.text(0.7,70,"ROC AUC: "+str(round(roc_auc_score(true_labels, predicted_labels),3)))
 plt.savefig("plots/pred_BCE.png")
 #plt.show()
