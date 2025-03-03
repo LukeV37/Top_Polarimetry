@@ -9,13 +9,15 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_score, roc_auc_score
-import os
+import sys
 
-tag = "U_1M"
-out_dir = "plots_"+tag+"/"
-os.mkdir(out_dir)
+tag = str(sys.argv[1])
+Epochs = int(sys.argv[2])
+Step = int(sys.argv[3])
+in_dir = str(sys.argv[4])
+out_dir = str(sys.argv[5])
 
-with open("data_batched_MSE_"+tag+".pkl","rb") as f:
+with open(in_dir+"/data_batched_MSE_"+tag+".pkl","rb") as f:
     data_dict = pickle.load( f )
 
 num_events = len(data_dict["label_batch"])
@@ -139,7 +141,7 @@ def train(X_train_jet, X_train_jet_trk, X_train_trk, y_train, y_train_jet_trk,
     num_train = len(X_train_jet)
     num_val = len(X_val_jet)
     
-    step_size=25
+    step_size=Step
     gamma=0.1
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)
     for e in range(epochs):
@@ -212,7 +214,6 @@ model = Model()
 model.to(device)
 print("Trainable Parameters :", sum(p.numel() for p in model.parameters() if p.requires_grad))
 
-Epochs=100
 optimizer = optim.AdamW(model.parameters(), lr=0.001)
 MSE_loss_fn = nn.MSELoss()
 CCE_jet_trk_loss_fn = nn.CrossEntropyLoss()
@@ -220,7 +221,7 @@ CCE_jet_trk_loss_fn = nn.CrossEntropyLoss()
 combined_history = train(X_train_jet, X_train_jet_trk, X_train_trk, y_train, y_train_jet_trk,
                          X_val_jet, X_val_jet_trk, X_val_trk, y_val, y_val_jet_trk,
                          epochs=Epochs)
-torch.save(model,"model.torch")
+torch.save(model,out_dir+"/model.torch")
 
 plt.figure()
 plt.plot(combined_history[:,0], label="Train")
@@ -228,7 +229,7 @@ plt.plot(combined_history[:,1], label="Val")
 plt.title('Loss')
 plt.legend()
 plt.yscale('log')
-plt.savefig(outdir+"Loss_Curve.png")
+plt.savefig(out_dir+"/Loss_Curve.png")
 #plt.show()
 
 ### Evaluate Model
@@ -282,19 +283,19 @@ for i in range(num_feats):
     plt.title("Predicted Ouput Distribution using Attention Model")
     plt.legend()
     plt.yscale('log')
-    plt.xlabel('PU Fraction',loc='right')
-    plt.savefig(out_dir+"pred_1d_"+feats[i]+".png")
+    plt.xlabel(feats[i],loc='right')
+    plt.savefig(out_dir+"/pred_1d_"+feats[i]+".png")
     #plt.show()
     plt.close()
 
     plt.figure()
     plt.title("Ouput Distribution using Attention Model")
     plt.hist2d(np.ravel(predicted_labels[:,i]),np.ravel(true_labels[:,i]), bins=100,norm=mcolors.LogNorm(),range=(ranges[i],ranges[i]))
-    plt.xlabel('Predicted PU Fraction',loc='right')
-    plt.ylabel('True PU Fraction',loc='top')
+    plt.xlabel('Predicted '+feats[i],loc='right')
+    plt.ylabel('True '+feats[i],loc='top')
     diff = ranges[i][1] - ranges[i][0]
     plt.text(ranges[i][1]-0.3*diff,ranges[i][0]+0.2*diff,"$R^2$ value: "+str(round(r2_score(np.ravel(predicted_labels[:,i]),np.ravel(true_labels[:,i])),3)),backgroundcolor='r',color='k')
     #print("R^2 value: ", round(r2_score(predicted_labels[:,i],true_labels[:,i]),3))
-    plt.savefig(out_dir+"pred_2d_"+feats[i]+".png")
+    plt.savefig(out_dir+"/pred_2d_"+feats[i]+".png")
     #plt.show()
     plt.close()
