@@ -6,8 +6,9 @@ import random
 import sys
 
 tag = str(sys.argv[1])
+out_dir_data= str(sys.argv[2])
 
-with open("preprocessed_"+tag+".pkl","rb") as f:
+with open(out_dir_data+"/preprocessed_"+tag+".pkl","rb") as f:
     data_dict = pickle.load( f )
 jet_feats = data_dict["jet_feats"]
 jet_trk_feats = data_dict["jet_trk_feats"]
@@ -28,7 +29,7 @@ jet_trk_feats = jet_trk_feats[sort]
 trk_feats = trk_feats[sort]
 labels = labels[sort]
 
-batch_size = 64
+batch_size = 32
 num_batches = int(len(labels)/batch_size)
 
 num_jet_trk_feats=len(jet_trk_feats[0][0])-3
@@ -104,5 +105,5 @@ data_dict = {"jet_batch": jet_feats_batch,
              "jet_trk_labels_batch": jet_trk_labels_batch,
             }
 
-with open("data_batched_MSE_"+tag+".pkl","wb") as f:
+with open(out_dir_data+"/data_batched_MSE_"+tag+".pkl","wb") as f:
     pickle.dump(data_dict, f)
