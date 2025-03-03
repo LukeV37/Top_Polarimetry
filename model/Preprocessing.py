@@ -9,7 +9,8 @@ import pickle
 import sys
 
 dataset_tag = str(sys.argv[1])
-outdir = str(sys.argv[2])
+out_dir_plots = str(sys.argv[2])
+out_dir_data = str(sys.argv[3])
 
 print("Reading Sample...")
 
@@ -190,7 +191,7 @@ plt.yscale('log')
 plt.ylabel('Num Jets')
 plt.xlabel('Fraction of Tracks From Top',loc='right')
 plt.legend()
-plt.savefig(outdir+"/Fraction_from_Top.png")
+plt.savefig(out_dir_plots+"/Fraction_from_Top.png")
 
 fig1, ax1 = plt.subplots()
 ax1.set_title("Matched Jet vs Parton pT")
@@ -198,28 +199,28 @@ ax1.hist2d(pt_partons,pt_fat_jets, bins=100,norm=mcolors.LogNorm(),range=((200,8
 ax1.set_xlabel("Parton pT")
 ax1.set_ylabel("Fat Jet pT")
 ax1.text(600,300,"$R^2$ value: "+str(round(r2_score(pt_partons,pt_fat_jets),3)),backgroundcolor='r',color='k')
-plt.savefig(outdir+"/Matching_pT.png")
+plt.savefig(out_dir_plots+"/Matching_pT.png")
 
 fig2, ax2 = plt.subplots()
 ax2.set_title("DeltaR between Matched Jet and Parton")
 ax2.hist(deltaR,histtype='step',bins=100,range=(0,4),color='k')
 ax2.set_yscale("log")
 #ax2.legend()
-plt.savefig(outdir+"/Matching_DeltaR.png")
+plt.savefig(out_dir_plots+"/Matching_DeltaR.png")
 
 fig3, ax3 = plt.subplots()
 ax3.set_title("DeltaEta between Matched Jet and Parton")
 ax3.hist(deltaEta,histtype='step',bins=100,range=(-3.5,3.5),color='k')
 ax3.set_yscale("log")
 #ax3.legend()
-plt.savefig(outdir+"/Matching_DeltaEta.png")
+plt.savefig(out_dir_plots+"/Matching_DeltaEta.png")
 
 fig4, ax4 = plt.subplots()
 ax4.set_title("DeltaPhi between Matched Jet and Parton")
 ax4.hist(deltaPhi,histtype='step',bins=100,range=(-3.5,3.5),color='k')
 ax4.set_yscale("log")
 #ax4.legend()
-plt.savefig(outdir+"/Matching_DeltaPhi.png")
+plt.savefig(out_dir_plots+"/Matching_DeltaPhi.png")
     
 
 print("Converting to Awkward Arrays...")
@@ -320,13 +321,13 @@ data_dict = {"jet_feats": jet_feats,
              "labels": labels,
             }
 
-with open("preprocessed_"+dataset_tag+".pkl","wb") as f:
+with open(out_dir_data+"/preprocessed_"+dataset_tag+".pkl","wb") as f:
     pickle.dump(data_dict, f)
 
 plt.figure()
 plt.title("CosTheta")
 plt.hist(costheta)
-plt.savefig(outdir+"/costheta.png")
+plt.savefig(out_dir_plots+"/costheta.png")
 
 jet_feat_names = ["jet_pT","jet_eta","jet_phi","jet_m"]
 jet_trk_feat_names = ["trk_pT","trk_eta","trk_phi","trk_q","trk_d0","trk_z0","trk_fromDown","trk_fromUp","trk_fromBottom"]
@@ -340,7 +341,7 @@ for i, var in enumerate(jet_feat_names):
     plt.title(var)
     plt.hist(ak.ravel(feat),range=(mini,maxi),histtype='step',bins=50)
     plt.yscale('log')
-    plt.savefig(outdir+"/"+var+".png")
+    plt.savefig(out_dir_plots+"/"+var+".png")
     plt.close()
 
 for i, var in enumerate(jet_trk_feat_names):
@@ -351,7 +352,7 @@ for i, var in enumerate(jet_trk_feat_names):
     plt.title(var)
     plt.hist(ak.ravel(feat),range=(mini,maxi),histtype='step',bins=50)
     plt.yscale('log')
-    plt.savefig(outdir+"/jet_"+var+".png")
+    plt.savefig(out_dir_plots+"/jet_"+var+".png")
     plt.close()
 
 for i, var in enumerate(trk_feat_names):
@@ -362,7 +363,7 @@ for i, var in enumerate(trk_feat_names):
     plt.title(var)
     plt.hist(ak.ravel(feat),range=(mini,maxi),histtype='step',bins=50)
     plt.yscale('log')
-    plt.savefig(outdir+"/"+var+".png")
+    plt.savefig(out_dir_plots+"/"+var+".png")
     plt.close()
 
 print("Done!")
