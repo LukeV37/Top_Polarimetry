@@ -61,12 +61,18 @@ with uproot.open("../madgraph/pp_tt_semi_full_"+dataset_tag+"/labels_"+dataset_t
     down_pT = f['down_pT'].array()
     down_eta = f['down_eta'].array()
     down_phi = f['down_phi'].array()
+    down_deltaR = f['down_deltaR'].array()
+    down_deltaEta = f['down_deltaEta'].array()
+    down_deltaPhi = f['down_deltaPhi'].array()
     bottom_px = f['bottom_px'].array()
     bottom_py = f['bottom_py'].array()
     bottom_pz = f['bottom_pz'].array()
     bottom_pT = f['bottom_pT'].array()
     bottom_eta = f['bottom_eta'].array()
     bottom_phi = f['bottom_phi'].array()
+    bottom_deltaR = f['bottom_deltaR'].array()
+    bottom_deltaEta = f['bottom_deltaEta'].array()
+    bottom_deltaPhi = f['bottom_deltaPhi'].array()
     costheta = f['costheta'].array()
 
 # Initialize output features
@@ -266,12 +272,18 @@ down_pz = down_pz[selected_events]
 down_pT = down_pT[selected_events]
 down_eta = down_eta[selected_events]
 down_phi = down_phi[selected_events]
+down_deltaR = down_deltaR[selected_events]
+down_deltaEta = down_deltaEta[selected_events]
+down_deltaPhi = down_deltaPhi[selected_events]
 bottom_px = bottom_px[selected_events]
 bottom_py = bottom_py[selected_events]
 bottom_pz = bottom_pz[selected_events]
 bottom_pT = bottom_pT[selected_events]
 bottom_eta = bottom_eta[selected_events]
 bottom_phi = bottom_phi[selected_events]
+bottom_deltaR = bottom_deltaR[selected_events]
+bottom_deltaEta = bottom_deltaEta[selected_events]
+bottom_deltaPhi = bottom_deltaPhi[selected_events]
 costheta = costheta[selected_events]
 
 norm = False
@@ -311,7 +323,7 @@ trk_feat_list = [trk_pt,trk_eta,trk_phi,trk_q,trk_d0,trk_z0]
 trk_feat_list = [x[:,:,np.newaxis] for x in trk_feat_list]
 trk_feats = ak.concatenate(trk_feat_list, axis=2)
 
-label_list = [top_px,top_py,top_pz,top_E,down_px,down_py,down_pz,down_pT,down_eta,down_phi,bottom_px,bottom_py,bottom_pz,bottom_pT,bottom_eta,bottom_phi,costheta]
+label_list = [top_px,top_py,top_pz,top_E,down_px,down_py,down_pz,down_pT,down_eta,down_phi,down_deltaR,down_deltaEta,down_deltaPhi,bottom_px,bottom_py,bottom_pz,bottom_pT,bottom_eta,bottom_phi,bottom_deltaR,bottom_deltaEta,bottom_deltaPhi,costheta]
 label_list = [x[:,np.newaxis] for x in label_list]
 labels = ak.concatenate(label_list, axis=1)
 

@@ -106,7 +106,7 @@ class Model(nn.Module):
         self.stack4 = Stack(self.embed_dim, self.num_heads)
 
         # Regression Task
-        self.regression = nn.Linear(self.embed_dim, 17)
+        self.regression = nn.Linear(self.embed_dim, 23)
         # Classification Task
         self.jet_trk_classification = nn.Linear(self.embed_dim, 3)
 
@@ -240,8 +240,8 @@ true_labels = []
 binary_pred = []
 binary_true = []
 
-predicted_labels = np.array([]).reshape(0,17)
-true_labels = np.array([]).reshape(0,17)
+predicted_labels = np.array([]).reshape(0,23)
+true_labels = np.array([]).reshape(0,23)
 
 num_test = len(X_test_jet)
 for i in range(num_test):
@@ -272,10 +272,11 @@ print("Test MAE:\t", mean_absolute_error(true_labels, predicted_labels))
 print("Test RMSE:\t", root_mean_squared_error(true_labels, predicted_labels))
 
 
-feats = ['top_px','top_py','top_pz','top_E','down_px','down_py','down_pz','down_pT','down_eta','down_phi','bottom_px','bottom_py','bottom_pz','bottom_pT','bottom_eta','bottom_phi','costheta']
+feats = ['top_px','top_py','top_pz','top_E','down_px','down_py','down_pz','down_pT','down_eta','down_phi','down_deltaR','down_deltaEta','down_deltaPhi','bottom_px','bottom_py','bottom_pz','bottom_pT','bottom_eta','bottom_phi','bottom_deltaR','bottom_deltaEta','bottom_deltaPhi','costheta']
 num_feats = len(feats)
-ranges = [(-1000,1000),(-1000,1000),(-1000,1000),(0,1500),(-1,1),(-1,1),(-1,1),(0,600),(-5,5),(-3.14,3.14),(-1,1),(-1,1),(-1,1),(0,600),(-5,5),(-3.14,3.14),(-1,1)]
+ranges = [(-1000,1000),(-1000,1000),(-1000,1000),(0,1500),(-1,1),(-1,1),(-1,1),(0,600),(-5,5),(-3.14,3.14),(0,3),(-2,2),(-3,3),(-1,1),(-1,1),(-1,1),(0,600),(-5,5),(-3.14,3.14),(0,3),(-2,2),(-3,3),(-1,1)]
 
+print("Plotting predictions...")
 for i in range(num_feats):
     plt.figure()
     plt.hist(np.ravel(true_labels[:,i]),histtype='step',color='r',label='True Distribution',bins=50,range=ranges[i])
@@ -299,3 +300,5 @@ for i in range(num_feats):
     plt.savefig(out_dir+"/pred_2d_"+feats[i]+".png")
     #plt.show()
     plt.close()
+
+print("Done training!")

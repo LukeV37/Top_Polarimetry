@@ -41,6 +41,9 @@ class Event:
             self.pT = []
             self.eta = []
             self.phi = []
+            self.deltaR = []
+            self.deltaEta = []
+            self.deltaPhi = []
             
         def add_feats(self, px, py, pz, E):
             self.px = np.concat((self.px, ak.to_numpy(px)))
@@ -65,6 +68,9 @@ class Event:
         self.down_label.pT = np.ones_like(self.b.px)*-999
         self.down_label.eta = np.ones_like(self.b.px)*-999
         self.down_label.phi = np.ones_like(self.b.px)*-999
+        self.down_label.deltaR = np.ones_like(self.b.px)*-999
+        self.down_label.deltaEta = np.ones_like(self.b.px)*-999
+        self.down_label.deltaPhi = np.ones_like(self.b.px)*-999
 
         self.b_label.px = np.ones_like(self.b.px)*-999
         self.b_label.py = np.ones_like(self.b.px)*-999
@@ -73,6 +79,9 @@ class Event:
         self.b_label.pT = np.ones_like(self.b.px)*-999
         self.b_label.eta = np.ones_like(self.b.px)*-999
         self.b_label.phi = np.ones_like(self.b.px)*-999
+        self.b_label.deltaR = np.ones_like(self.b.px)*-999
+        self.b_label.deltaEta = np.ones_like(self.b.px)*-999
+        self.b_label.deltaPhi = np.ones_like(self.b.px)*-999
         
         self.costheta = np.ones_like(self.b.px)*-999
         
@@ -100,6 +109,9 @@ class Event:
             self.b_label.pT[event] = p_b.Pt()
             self.b_label.eta[event] = p_b.Eta()
             self.b_label.phi[event] = p_b.Phi()
+            self.b_label.deltaR[event] = p_b.DeltaR(p_t)
+            self.b_label.deltaEta[event] = p_b.Eta()-p_t.Eta()
+            self.b_label.deltaPhi[event] = p_b.DeltaPhi(p_t)
 
             #Construct Lorentz boost to t-tbar CM frame 
             to_ttbar_rest = -(p_t + p_tbar).BoostVector()
@@ -136,6 +148,9 @@ class Event:
             self.down_label.pT[event] = p_d.Pt()
             self.down_label.eta[event] = p_d.Eta()
             self.down_label.phi[event] = p_d.Phi()
+            self.down_label.deltaR[event] = p_d.DeltaR(p_t)
+            self.down_label.deltaEta[event] = p_d.Eta()-p_t.Eta()
+            self.down_label.deltaPhi[event] = p_d.DeltaPhi(p_t)
 
             #down quark direction in top rest frame
             d_vect = p_d.Vect().Unit()
@@ -159,6 +174,9 @@ class Event:
                           "down_pT" : self.down_label.pT,
                           "down_eta" : self.down_label.eta,
                           "down_phi" : self.down_label.phi,
+                          "down_deltaR" : self.down_label.deltaR,
+                          "down_deltaEta" : self.down_label.deltaEta,
+                          "down_deltaPhi" : self.down_label.deltaPhi,
                           "bottom_px": self.b_label.px,
                           "bottom_py": self.b_label.py,
                           "bottom_pz": self.b_label.pz,
@@ -166,6 +184,9 @@ class Event:
                           "bottom_pT" : self.b_label.pT,
                           "bottom_eta" : self.b_label.eta,
                           "bottom_phi" : self.b_label.phi,
+                          "bottom_deltaR" : self.b_label.deltaR,
+                          "bottom_deltaEta" : self.b_label.deltaEta,
+                          "bottom_deltaPhi" : self.b_label.deltaPhi,
                           "costheta": self.costheta
                          }
             #f['labels'].show()
