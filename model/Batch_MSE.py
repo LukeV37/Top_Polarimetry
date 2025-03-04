@@ -29,7 +29,7 @@ jet_trk_feats = jet_trk_feats[sort]
 trk_feats = trk_feats[sort]
 labels = labels[sort]
 
-batch_size = 32
+batch_size = 64
 num_batches = int(len(labels)/batch_size)
 
 num_jet_trk_feats=len(jet_trk_feats[0][0])-3
