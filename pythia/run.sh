@@ -1,13 +1,25 @@
 #!/bin/bash
 
-if [ -z "$1" ]; then
-    echo "Must enter 1 agruments"
+if [ -z "$2" ]; then
+    echo "Must enter 2 agruments"
     echo "1: Dataset Tag (from MadGraph)"
+    echo "2: Number of runs (from MadGraph)"
     exit 1
 fi
 
+tag=$1
+runs=$2
+
+mkdir "WS_${tag}"
+mkdir "WS_${tag}/logs"
+
 cd src
 make generate_dataset
-./run_dataset $1
+
+for (( i=0 ; i<$runs ; i++ ));
+do
+    ./run_dataset $tag $i > "../WS_${tag}/logs/dataset_${tag}_${i}.log" 2>&1 &
+done
+wait
 make clean
 cd ..

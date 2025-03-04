@@ -19,7 +19,7 @@ fi
 # Run Pythia Showering
 if [ "$bypass_pythia" = false ]; then
   cd pythia
-  ./run.sh $tag
+  ./run.sh $tag $num_runs
   cd $WORKING_DIR
 fi
 
