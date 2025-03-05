@@ -53,7 +53,8 @@ cp ./include/cuts.f "./pp_tt_semi_full_${dataset_tag}/SubProcesses/"
 
 # Generate the Events!
 #"./pp_tt_semi_full_${dataset_tag}/bin/generate_events" -f
-"./pp_tt_semi_full_${dataset_tag}/bin/madevent" multi_run.tmp
+echo "Please be patient while MadGraph generates processes..."
+"./pp_tt_semi_full_${dataset_tag}/bin/madevent" multi_run.tmp | tee "MadGraph_${dataset_tag}.log"
 
 # Clean up workspace (generated automatically by madgraph binary)
 rm -f py.py
@@ -101,4 +102,4 @@ done
 wait
 
 echo
-echo "MadGraph Generation Done!"
+echo -e "\tMadGraph Generation Done!"
