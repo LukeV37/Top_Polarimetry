@@ -65,23 +65,27 @@ rm *.tmp
 ### Post Processing ###
 #######################
 
-# Extract LHE file with gzip
-echo "Decompressing lhe file..."
-gzip -dk "./pp_tt_semi_full_${dataset_tag}/Events/run_01/unweighted_events.lhe.gz"
+for (( i=0 ; i<$num_runs ; i++ ));
+do
+    echo "Processing Run: $i"
+    # Extract LHE file with gzip
+    echo -e "\tDecompressing lhe file..."
+    gzip -dk "./pp_tt_semi_full_${dataset_tag}/Events/run_01_$i/unweighted_events.lhe.gz"
 
-# Find line with version number and delete the proceeding warning 
-# This is needed since I am using git tag instead of production version
-line_num=$(awk '/VERSION 3.5.5/ {print NR}' "pp_tt_semi_full_${dataset_tag}/Events/run_01/unweighted_events.lhe")
-start_line=$((line_num+1))
-end_line=$((line_num+4))
-sed -i "${start_line},${end_line}d" "pp_tt_semi_full_${dataset_tag}/Events/run_01/unweighted_events.lhe"
+    # Find line with version number and delete the proceeding warning
+    # This is needed since I am using git tag instead of production version
+    line_num=$(awk '/VERSION 3.5.5/ {print NR}' "pp_tt_semi_full_${dataset_tag}/Events/run_01_$i/unweighted_events.lhe")
+    start_line=$((line_num+1))
+    end_line=$((line_num+4))
+    sed -i "${start_line},${end_line}d" "pp_tt_semi_full_${dataset_tag}/Events/run_01_$i/unweighted_events.lhe"
 
-# Now that warning message is removed, use LHEReader.py to convert LHE file to root file
-echo "Converting lhe file to root format..."
-python include/LHEReader.py --input "pp_tt_semi_full_${dataset_tag}/Events/run_01/unweighted_events.lhe" --output "pp_tt_semi_full_${dataset_tag}/hard_process_${dataset_tag}.root"
+    # Now that warning message is removed, use LHEReader.py to convert LHE file to root file
+    echo -e "\tConverting lhe file to root format..."
+    python include/LHEReader.py --input "pp_tt_semi_full_${dataset_tag}/Events/run_01_$i/unweighted_events.lhe" --output "pp_tt_semi_full_${dataset_tag}/hard_process_${dataset_tag}_$i.root"
 
-# Calculate labels
-python include/TLorentz_Labels.py $dataset_tag
+    # Calculate labels
+    python include/TLorentz_Labels.py $dataset_tag $i
 
-# Clean workspace (uncompressed version no longer needed)
-rm -f "./pp_tt_semi_full_${dataset_tag}/Events/run_01/unweighted_events.lhe"
+    # Clean workspace (uncompressed version no longer needed)
+    rm -f "./pp_tt_semi_full_${dataset_tag}/Events/run_01_$i/unweighted_events.lhe"
+done

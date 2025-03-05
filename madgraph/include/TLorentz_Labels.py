@@ -158,8 +158,8 @@ class Event:
             #\cos\theta_d = k_vect\dot d_vect
             self.costheta[event] = k_vect.Dot(d_vect)
             
-    def write_ntuple(self, tag):
-        with uproot.recreate("pp_tt_semi_full_"+tag+"/labels_"+tag+".root") as f:
+    def write_ntuple(self, tag, num):
+        with uproot.recreate("pp_tt_semi_full_"+tag+"/labels_"+tag+"_"+num+".root") as f:
             f['labels'] = {"top_px": self.top_label.px,
                           "top_py": self.top_label.py,
                           "top_pz": self.top_label.pz,
@@ -193,10 +193,11 @@ class Event:
 
 # Get dataset tag
 dataset_tag=str(sys.argv[1])
+run_num=str(sys.argv[2])
 
 # Read input ntuple
-print("Reading lhe file...")
-with uproot.open('pp_tt_semi_full_'+dataset_tag+'/hard_process_'+dataset_tag+'.root:events') as f:
+print("\tReading lhe file...")
+with uproot.open('pp_tt_semi_full_'+dataset_tag+'/hard_process_'+dataset_tag+'_'+run_num+'.root:events') as f:
     #print(f.keys())
     px = f['px'].array()
     py = f['py'].array()
@@ -255,8 +256,8 @@ mask = (nu_el_mask | nu_mu_mask)
 event.nu.add_feats(np.ravel(px[mask]),np.ravel(py[mask]),np.ravel(pz[mask]),np.ravel(E[mask]))
 
 # Calculate and write labels
-print("Calculating Labels...")
+print("\tCalculating Labels...")
 event.calc_labels()
-print("Writing ntuple...")
-event.write_ntuple(dataset_tag)
-print("Done!")
+print("\tWriting ntuple...")
+event.write_ntuple(dataset_tag,run_num)
+print("\tDone!")
