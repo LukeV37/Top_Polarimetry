@@ -17,7 +17,7 @@ Step = int(sys.argv[3])
 in_dir = str(sys.argv[4])
 out_dir = str(sys.argv[5])
 
-with open(in_dir+"/data_batched_MSE_"+tag+".pkl","rb") as f:
+with open(in_dir+"/data_batched_combined_MSE_"+tag+".pkl","rb") as f:
     data_dict = pickle.load( f )
 
 num_events = len(data_dict["label_batch"])

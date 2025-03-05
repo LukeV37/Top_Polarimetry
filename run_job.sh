@@ -61,6 +61,8 @@ if [ "$bypass_batch" = false ]; then
     python -u Batch_MSE.py $tag $i $dir_datasets > "${dir_datasets}/logs/batch.log" &
   done
   wait
+
+  python -u Combine_Batches.py $tag $num_runs $dir_datasets
   cd $WORKING_DIR
   end=`date +%s`
   runtime=$((end-start))
