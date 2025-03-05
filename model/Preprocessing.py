@@ -10,7 +10,7 @@ import sys
 
 dataset_tag = str(sys.argv[1])
 out_dir_plots = str(sys.argv[2])
-out_dir_data = str(sys.argv[3])
+#out_dir_data = str(sys.argv[3])
 
 print("Reading Sample...")
 
@@ -321,7 +321,7 @@ data_dict = {"jet_feats": jet_feats,
              "labels": labels,
             }
 
-with open(out_dir_data+"/preprocessed_"+dataset_tag+".pkl","wb") as f:
+with open("preprocessed_"+dataset_tag+".pkl","wb") as f:
     pickle.dump(data_dict, f)
 
 plt.figure()
