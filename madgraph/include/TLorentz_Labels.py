@@ -196,7 +196,7 @@ dataset_tag=str(sys.argv[1])
 run_num=str(sys.argv[2])
 
 # Read input ntuple
-print("\tReading lhe file...")
+#print("\tReading lhe file...")
 with uproot.open('pp_tt_semi_full_'+dataset_tag+'/hard_process_'+dataset_tag+'_'+run_num+'.root:events') as f:
     #print(f.keys())
     px = f['px'].array()
@@ -256,8 +256,8 @@ mask = (nu_el_mask | nu_mu_mask)
 event.nu.add_feats(np.ravel(px[mask]),np.ravel(py[mask]),np.ravel(pz[mask]),np.ravel(E[mask]))
 
 # Calculate and write labels
-print("\tCalculating Labels...")
+#print("\tCalculating Labels...")
 event.calc_labels()
-print("\tWriting ntuple...")
+#print("\tWriting ntuple...")
 event.write_ntuple(dataset_tag,run_num)
-print("\tDone!")
+#print("\tDone!")
