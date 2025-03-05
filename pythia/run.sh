@@ -2,8 +2,8 @@
 
 if [ -z "$2" ]; then
     echo "Must enter 2 agruments"
-    echo "1: Dataset Tag (from MadGraph)"
-    echo "2: Number of runs (from MadGraph)"
+    echo -e "\t1: Dataset Tag (from MadGraph)"
+    echo -e "\t2: Number of runs (from MadGraph)"
     exit 1
 fi
 
