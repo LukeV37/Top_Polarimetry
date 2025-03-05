@@ -16,6 +16,8 @@ mkdir "WS_${tag}/logs"
 cd src
 make generate_dataset
 
+echo "Please be patient while Pythia performs hadronization..."
+
 for (( i=0 ; i<$runs ; i++ ));
 do
     ./run_dataset $tag $i > "../WS_${tag}/logs/dataset_${tag}_${i}.log" 2>&1 &
@@ -23,3 +25,5 @@ done
 wait
 make clean
 cd ..
+
+echo -e "\tPythia Showering Done!"
