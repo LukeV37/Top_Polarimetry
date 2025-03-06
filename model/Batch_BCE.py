@@ -7,16 +7,17 @@ import sys
 
 tag1 = str(sys.argv[1])
 tag2 = str(sys.argv[2])
-#out_dir_data = str(sys.argv[3])
+run = str(sys.argv[3])
+out_dir_data = str(sys.argv[4])
 
-with open("preprocessed_"+tag1+".pkl","rb") as f:
+with open(out_dir_data+"/preprocessed_"+tag1+"_"+run+".pkl","rb") as f:
     data_dict_L = pickle.load( f )
 jet_feats_L = data_dict_L["jet_feats"]
 jet_trk_feats_L = data_dict_L["jet_trk_feats"]
 trk_feats_L = data_dict_L["trk_feats"]
 labels_L = ak.zeros_like(jet_feats_L[:,0])[:,np.newaxis]
 
-with open("preprocessed_"+tag2+".pkl","rb") as f:
+with open(out_dir_data+"/preprocessed_"+tag2+"_"+run+".pkl","rb") as f:
     data_dict_R = pickle.load( f )
 jet_feats_R = data_dict_R["jet_feats"]
 jet_trk_feats_R = data_dict_R["jet_trk_feats"]
@@ -43,7 +44,7 @@ jet_trk_feats = jet_trk_feats[sort]
 trk_feats = trk_feats[sort]
 labels = labels[sort]
 
-batch_size = 128
+batch_size = 256
 num_batches = int(len(labels)/batch_size)
 
 num_feats=len(trk_feats[0][0])
@@ -116,8 +117,8 @@ data_dict = {"jet_batch": jet_feats_batch,
              "jet_trk_batch": jet_trk_feats_batch,
              "trk_batch": trk_feats_batch,
              "label_batch": labels_batch,
-             "jet_trk_label_batch": jet_trk_labels_batch,
+             "jet_trk_labels_batch": jet_trk_labels_batch,
             }
 
-with open("data_batched_combined_"+tag1+"_"+tag2+".pkl","wb") as f:
+with open(out_dir_data+"/data_batched_"+tag1+"_"+tag2+"_"+run+".pkl","wb") as f:
     pickle.dump(data_dict, f)

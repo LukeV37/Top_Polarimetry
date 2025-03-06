@@ -16,8 +16,10 @@ tag1 = str(sys.argv[1])
 tag2 = str(sys.argv[2])
 Epochs = int(sys.argv[3])
 Step = int(sys.argv[4])
+in_dir = str(sys.argv[5])
+out_dir = str(sys.argv[6])
 
-with open("data_batched_combined_"+tag1+"_"+tag2+".pkl","rb") as f:
+with open(in_dir+"/data_batched_combined_BCE_"+tag1+"_"+tag2+".pkl","rb") as f:
     data_dict = pickle.load( f )
 
 num_events = len(data_dict["label_batch"])
@@ -29,19 +31,19 @@ X_train_jet = data_dict["jet_batch"][0:train_split]
 X_train_jet_trk = data_dict["jet_trk_batch"][0:train_split]
 X_train_trk = data_dict["trk_batch"][0:train_split]
 y_train = data_dict["label_batch"][0:train_split]
-y_train_jet_trk = data_dict["jet_trk_label_batch"][0:train_split]
+y_train_jet_trk = data_dict["jet_trk_labels_batch"][0:train_split]
 
 X_val_jet = data_dict["jet_batch"][train_split:test_split]
 X_val_jet_trk = data_dict["jet_trk_batch"][train_split:test_split]
 X_val_trk = data_dict["trk_batch"][train_split:test_split]
 y_val = data_dict["label_batch"][train_split:test_split]
-y_val_jet_trk = data_dict["jet_trk_label_batch"][train_split:test_split]
+y_val_jet_trk = data_dict["jet_trk_labels_batch"][train_split:test_split]
 
 X_test_jet = data_dict["jet_batch"][test_split:]
 X_test_jet_trk = data_dict["jet_trk_batch"][test_split:]
 X_test_trk = data_dict["trk_batch"][test_split:]
 y_test = data_dict["label_batch"][test_split:]
-y_test_jet_trk = data_dict["jet_trk_label_batch"][test_split:]
+y_test_jet_trk = data_dict["jet_trk_labels_batch"][test_split:]
 
 print("Training Batches: ", len(y_train))
 print("Validation Batches: ", len(y_val))
@@ -224,7 +226,7 @@ CCE_loss_fn = nn.CrossEntropyLoss()
 combined_history = train(X_train_jet, X_train_jet_trk, X_train_trk, y_train, y_train_jet_trk,
                          X_val_jet, X_val_jet_trk, X_val_trk, y_val, y_val_jet_trk,
                          epochs=Epochs)
-torch.save(model,"model.torch")
+torch.save(model,out_dir+"/model.torch")
 
 plt.figure()
 plt.plot(combined_history[:,0], label="Train")
@@ -232,7 +234,7 @@ plt.plot(combined_history[:,1], label="Val")
 plt.title('Loss')
 plt.legend()
 plt.yscale('log')
-plt.savefig("Loss_Curve.png")
+plt.savefig(out_dir+"/Loss_Curve.png")
 #plt.show()
 
 ### Evaluate Model
@@ -282,9 +284,9 @@ plt.figure()
 plt.hist(predicted_labels[L],histtype='step',color='b',label='First Generation',bins=30,range=(0,1))
 plt.hist(predicted_labels[R],histtype='step',color='r',label='Second Generation',bins=30,range=(0,1))
 plt.title("Predicted Ouput Distribution using Attention Model")
-plt.legend()
+plt.legend(loc='upper center')
 #plt.yscale('log')
 plt.xlabel('isSecondGeneration',loc='right')
 plt.text(0.7,70,"ROC AUC: "+str(round(roc_auc_score(true_labels, predicted_labels),3)))
-plt.savefig("pred_BCE.png")
+plt.savefig(out_dir+"/pred_BCE.png")
 #plt.show()
