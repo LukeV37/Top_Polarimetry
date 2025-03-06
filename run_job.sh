@@ -89,6 +89,6 @@ if [ "$bypass_train" = false ]; then
   cd $WORKING_DIR
   end=`date +%s`
   runtime=$((end-start))
-  echo -e "\Training Done!"
+  echo -e "\tTraining Done!"
   echo -e "\tTime (sec): $runtime"
 fi
