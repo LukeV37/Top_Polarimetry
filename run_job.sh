@@ -13,7 +13,8 @@ source setup.sh
 if [ "$bypass_madgraph" = false ]; then
   start=`date +%s`
   cd madgraph
-  ./run.sh $tag $process $num_runs $num_events_per_run
+  ./run.sh $tag1 $process1 $num_events $num_events_per_run
+  ./run.sh $tag2 $process2 $num_events $num_events_per_run
   cd $WORKING_DIR
   end=`date +%s`
   runtime=$((end-start))
@@ -24,7 +25,12 @@ fi
 if [ "$bypass_pythia" = false ]; then
   start=`date +%s`
   cd pythia
-  ./run.sh $tag $num_runs
+  cd src
+  make generate_dataset
+  ./run_dataset $tag1 $num_runs > "../pythia_$tag1.log" &
+  ./run_dataset $tag2 $num_runs > "../pythia_$tag2.log" &
+  wait
+  make clean
   cd $WORKING_DIR
   end=`date +%s`
   runtime=$((end-start))
@@ -38,9 +44,11 @@ if [ "$bypass_preprocessing" = false ]; then
   cd model
   for (( i=0 ; i<$num_runs ; i++ ));
   do
-    mkdir -p "${dir_preprocessing}/run_$i"
+    mkdir -p "${dir_preprocessing1}/run_$i"
+    mkdir -p "${dir_preprocessing2}/run_$i"
     mkdir -p "${dir_datasets}/run_$i"
-    python -u Preprocessing.py $tag $i $dir_preprocessing $dir_datasets > "${dir_preprocessing}/run_$i/preprocessing.log" &
+    python -u Preprocessing.py $tag1 $i $dir_preprocessing1 $dir_datasets > "${dir_preprocessing1}/run_$i/preprocessing.log" &
+    python -u Preprocessing.py $tag2 $i $dir_preprocessing2 $dir_datasets > "${dir_preprocessing1}/run_$i/preprocessing.log" &
   done
   wait
   cd $WORKING_DIR
@@ -58,11 +66,10 @@ if [ "$bypass_batch" = false ]; then
   for (( i=0 ; i<$num_runs ; i++ ));
   do
     mkdir -p "${dir_datasets}/logs"
-    python -u Batch_MSE.py $tag $i $dir_datasets > "${dir_datasets}/logs/batch.log" &
+    python -u Batch_BCE.py $tag1 $tag2 $i $dir_datasets > "${dir_datasets}/logs/batch.log" &
   done
   wait
-
-  python -u Combine_Batches.py $tag $num_runs $dir_datasets
+  python -u Combine_Batches.py $tag1 $tag2 $num_runs $dir_datasets
   cd $WORKING_DIR
   end=`date +%s`
   runtime=$((end-start))
@@ -75,8 +82,7 @@ if [ "$bypass_train" = false ]; then
   echo "Please be patient for Training..."
   start=`date +%s`
   cd model
-  mkdir -p $dir_training
-  python -u Jet_Attention_Model_MSE.py $tag $epochs $step $dir_datasets $dir_training | tee "${dir_training}/training.log"
+  python -u Jet_Attention_Model_BCE.py $tag1 $tag2 $epochs $step | tee "training_${tag1}_${tag2}.log"
   cd $WORKING_DIR
   end=`date +%s`
   runtime=$((end-start))

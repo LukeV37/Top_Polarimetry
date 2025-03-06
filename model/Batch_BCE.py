@@ -7,6 +7,7 @@ import sys
 
 tag1 = str(sys.argv[1])
 tag2 = str(sys.argv[2])
+#out_dir_data = str(sys.argv[3])
 
 with open("preprocessed_"+tag1+".pkl","rb") as f:
     data_dict_L = pickle.load( f )
@@ -42,10 +43,10 @@ jet_trk_feats = jet_trk_feats[sort]
 trk_feats = trk_feats[sort]
 labels = labels[sort]
 
-batch_size = 64
+batch_size = 128
 num_batches = int(len(labels)/batch_size)
 
-num_feats=len(trk_feats[0][0])-1
+num_feats=len(trk_feats[0][0])
 
 jet_feats_batch = []
 jet_trk_feats_batch = []
@@ -68,8 +69,17 @@ for batch in range(num_batches):
     jet_trk_feat_list = [x[:,:,np.newaxis] for x in jet_trk_feat_list]
     jet_trk_feats_combined = ak.concatenate(jet_trk_feat_list, axis=2)
 
-    jet_trk_labels = jet_trk_feats[batch*batch_size:(batch+1)*batch_size,:,-1]
-    jet_trk_labels = ak.fill_none(ak.pad_none(jet_trk_labels, max_num_trks, axis=1), 0)
+    jet_trk_fromDown = jet_trk_feats[batch*batch_size:(batch+1)*batch_size,:,-3]
+    jet_trk_fromUp = jet_trk_feats[batch*batch_size:(batch+1)*batch_size,:,-2]
+    jet_trk_fromBottom = jet_trk_feats[batch*batch_size:(batch+1)*batch_size,:,-1]
+
+
+    jet_trk_fromDown = ak.fill_none(ak.pad_none(jet_trk_fromDown, max_num_trks, axis=1), 0)
+    jet_trk_fromUp = ak.fill_none(ak.pad_none(jet_trk_fromUp, max_num_trks, axis=1), 0)
+    jet_trk_fromBottom = ak.fill_none(ak.pad_none(jet_trk_fromBottom, max_num_trks, axis=1), 0)
+
+    jet_trk_labels = [jet_trk_fromDown[:,:,np.newaxis],jet_trk_fromUp[:,:,np.newaxis],jet_trk_fromBottom[:,:,np.newaxis]]
+    jet_trk_labels_combined = ak.concatenate(jet_trk_labels, axis=2)
         
     trk_feat_list = []
     for feat in range(num_feats):
@@ -81,33 +91,32 @@ for batch in range(num_batches):
     trk_feat_list = [x[:,:,np.newaxis] for x in trk_feat_list]
     trk_feats_combined = ak.concatenate(trk_feat_list, axis=2)
 
-    trk_labels = trk_feats[batch*batch_size:(batch+1)*batch_size,:,-1]
-    trk_labels = ak.fill_none(ak.pad_none(trk_labels, max_num_trks, axis=1), 0)
+    #trk_labels = trk_feats[batch*batch_size:(batch+1)*batch_size,:,-3]
+    #trk_labels = ak.fill_none(ak.pad_none(trk_labels, max_num_trks, axis=1), 0)
         
     jet_tensor = torch.tensor(jet_feats[batch*batch_size:(batch+1)*batch_size], dtype=torch.float32)
     jet_trk_tensor = torch.tensor(jet_trk_feats_combined, dtype=torch.float32)
     trk_tensor = torch.tensor(trk_feats_combined, dtype=torch.float32)
     labels_tensor = torch.tensor(labels[batch*batch_size:(batch+1)*batch_size], dtype=torch.float32)
-    jet_trk_labels_tensor = torch.unsqueeze(torch.tensor(jet_trk_labels, dtype=torch.float32),2)
-    trk_labels_tensor = torch.unsqueeze(torch.tensor(trk_labels, dtype=torch.float32),2)
+    jet_trk_labels_tensor = torch.tensor(jet_trk_labels_combined, dtype=torch.float32)
+    #trk_labels_tensor = torch.unsqueeze(torch.tensor(trk_labels, dtype=torch.float32),2)
         
     jet_feats_batch.append(jet_tensor)
     jet_trk_feats_batch.append(jet_trk_tensor)
     trk_feats_batch.append(trk_tensor)
     labels_batch.append(labels_tensor)
     jet_trk_labels_batch.append(jet_trk_labels_tensor)
-    trk_labels_batch.append(trk_labels_tensor)
+    #trk_labels_batch.append(trk_labels_tensor)
 
-temp=list(zip(jet_feats_batch,jet_trk_feats_batch,trk_feats_batch,labels_batch,jet_trk_labels_batch,trk_labels_batch))
+temp=list(zip(jet_feats_batch,jet_trk_feats_batch,trk_feats_batch,labels_batch,jet_trk_labels_batch))
 random.shuffle(temp)
-jet_feats_batch,jet_trk_feats_batch,trk_feats_batch,labels_batch,jet_trk_labels_batch,trk_labels_batch=zip(*temp)
+jet_feats_batch,jet_trk_feats_batch,trk_feats_batch,labels_batch,jet_trk_labels_batch=zip(*temp)
 
 data_dict = {"jet_batch": jet_feats_batch,
              "jet_trk_batch": jet_trk_feats_batch,
              "trk_batch": trk_feats_batch,
              "label_batch": labels_batch,
              "jet_trk_label_batch": jet_trk_labels_batch,
-             "trk_label_batch": trk_labels_batch,
             }
 
 with open("data_batched_combined_"+tag1+"_"+tag2+".pkl","wb") as f:
