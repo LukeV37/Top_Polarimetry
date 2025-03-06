@@ -4,4 +4,4 @@ cd submodules/install_scripts
 ./install_hepmc.sh
 ./install_fastjet.sh
 ./install_pythia.sh
-./install_delphes.sh
+#./install_delphes.sh
