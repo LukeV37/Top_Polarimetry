@@ -100,27 +100,14 @@ class Event:
             p_t = p_b + p_d + p_u 
             p_tbar = p_bbar + p_lm + p_vl
 
-            # Store bottom quark kinematics in lab frame
-            norm = np.sqrt(p_b.Px()**2 + p_b.Py()**2 + p_b.Pz()**2)
-            self.b_label.px[event] = p_b.Px()/norm
-            self.b_label.py[event] = p_b.Py()/norm
-            self.b_label.pz[event] = p_b.Pz()/norm
-            self.b_label.E[event]  = p_b.E()
-            self.b_label.pT[event] = p_b.Pt()
-            self.b_label.eta[event] = p_b.Eta()
-            self.b_label.phi[event] = p_b.Phi()
-            self.b_label.deltaR[event] = p_b.DeltaR(p_t)
-            self.b_label.deltaEta[event] = p_b.Eta()-p_t.Eta()
-            self.b_label.deltaPhi[event] = p_b.DeltaPhi(p_t)
-
             #Construct Lorentz boost to t-tbar CM frame 
             to_ttbar_rest = -(p_t + p_tbar).BoostVector()
 
             #Boost vectors to t-tbar CM frame
-            #p_t.Boost(to_ttbar_rest)
-            #p_tbar.Boost(to_ttbar_rest)
-            #p_d.Boost(to_ttbar_rest)
-            
+            p_t.Boost(to_ttbar_rest)
+            p_tbar.Boost(to_ttbar_rest)
+            p_d.Boost(to_ttbar_rest)
+
             # Store top quark kinematics in ttbar CM frame
             self.top_label.px[event] = p_t.Px()
             self.top_label.py[event] = p_t.Py()
@@ -137,8 +124,22 @@ class Event:
             to_t_rest = -p_t.BoostVector()
 
             #Boost down quark to top quark rest frame
-            #p_d.Boost(to_t_rest)
-            
+            p_d.Boost(to_t_rest)
+            p_b.Boost(to_t_rest)
+
+            # Store bottom quark kinematics in ttbar rest frame
+            norm = np.sqrt(p_b.Px()**2 + p_b.Py()**2 + p_b.Pz()**2)
+            self.b_label.px[event] = p_b.Px()/norm
+            self.b_label.py[event] = p_b.Py()/norm
+            self.b_label.pz[event] = p_b.Pz()/norm
+            self.b_label.E[event]  = p_b.E()
+            self.b_label.pT[event] = p_b.Pt()
+            self.b_label.eta[event] = p_b.Eta()
+            self.b_label.phi[event] = p_b.Phi()
+            self.b_label.deltaR[event] = p_b.DeltaR(p_t)
+            self.b_label.deltaEta[event] = p_b.Eta()-p_t.Eta()
+            self.b_label.deltaPhi[event] = p_b.DeltaPhi(p_t)
+
             # Store down quark kinematics in t rest frame
             norm = np.sqrt(p_d.Px()**2 + p_d.Py()**2 + p_d.Pz()**2)
             self.down_label.px[event] = p_d.Px()/norm
