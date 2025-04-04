@@ -9,19 +9,21 @@ import pickle
 import sys
 
 try:
-    _=sys.argv[4]
+    _=sys.argv[5]
 except:
-    print("Must enter 4 agruments")
+    print("Must enter 5 agruments")
     print("\t1: dataset tag (from MadGraph)")
     print("\t2: number of runs (from MadGraph)")
     print("\t3: plotting output directory e.g. plots")
     print("\t4: dataset output directory e.g data")
+    print("\t5: analysis type e.g. bottom or down")
     exit(1)
 
 dataset_tag = str(sys.argv[1])
 run_num = str(sys.argv[2])
 out_dir_plots = str(sys.argv[3])
 out_dir_data = str(sys.argv[4])
+analysis_type = str(sys.argv[5])
 
 print("Reading Sample...")
 
@@ -334,7 +336,15 @@ trk_feat_list = [trk_pt,trk_eta,trk_phi,trk_q,trk_d0,trk_z0]
 trk_feat_list = [x[:,:,np.newaxis] for x in trk_feat_list]
 trk_feats = ak.concatenate(trk_feat_list, axis=2)
 
-label_list = [top_px,top_py,top_pz,top_E,down_px,down_py,down_pz,down_pT,down_eta,down_phi,down_deltaR,down_deltaEta,down_deltaPhi,bottom_px,bottom_py,bottom_pz,bottom_pT,bottom_eta,bottom_phi,bottom_deltaR,bottom_deltaEta,bottom_deltaPhi,costheta]
+#label_list = [top_px,top_py,top_pz,top_E,down_px,down_py,down_pz,down_pT,down_eta,down_phi,down_deltaR,down_deltaEta,down_deltaPhi,bottom_px,bottom_py,bottom_pz,bottom_pT,bottom_eta,bottom_phi,bottom_deltaR,bottom_deltaEta,bottom_deltaPhi,costheta]
+
+assert analysis_type=="bottom" or analysis_type=="down"
+
+if analysis_type=="bottom":
+    label_list = [bottom_px,bottom_py,bottom_pz]
+if analysis_type=="down":
+    label_list = [down_px,down_py,down_pz]
+
 label_list = [x[:,np.newaxis] for x in label_list]
 labels = ak.concatenate(label_list, axis=1)
 
