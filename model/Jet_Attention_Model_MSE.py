@@ -16,6 +16,7 @@ Epochs = int(sys.argv[2])
 Step = int(sys.argv[3])
 in_dir = str(sys.argv[4])
 out_dir = str(sys.argv[5])
+analysis_type = str(sys.argv[6])
 
 with open(in_dir+"/data_batched_combined_MSE_"+tag+".pkl","rb") as f:
     data_dict = pickle.load( f )
@@ -103,10 +104,9 @@ class Model(nn.Module):
         self.stack1 = Stack(self.embed_dim, self.num_heads)
         self.stack2 = Stack(self.embed_dim, self.num_heads)
         self.stack3 = Stack(self.embed_dim, self.num_heads)
-        self.stack4 = Stack(self.embed_dim, self.num_heads)
 
         # Regression Task
-        self.regression = nn.Linear(self.embed_dim, 23)
+        self.regression = nn.Linear(self.embed_dim, 3)
         # Classification Task
         self.jet_trk_classification = nn.Linear(self.embed_dim, 3)
 
@@ -122,11 +122,10 @@ class Model(nn.Module):
         jet_embedding, jet_trk_embedding, trk_embedding = self.stack1(jet_embedding,jet_trk_embedding,trk_embedding)
         jet_embedding, jet_trk_embedding, trk_embedding = self.stack2(jet_embedding,jet_trk_embedding,trk_embedding)
         jet_embedding, jet_trk_embedding, trk_embedding = self.stack3(jet_embedding,jet_trk_embedding,trk_embedding)
-        jet_embedding, jet_trk_embedding, trk_embedding = self.stack4(jet_embedding,jet_trk_embedding,trk_embedding)
     
         # Get output
         jet_embedding = torch.squeeze(jet_embedding,1)
-        output = self.regression(jet_embedding)
+        output = F.tanh(self.regression(jet_embedding))
         jet_trk_classification = self.jet_trk_classification(jet_trk_embedding)
         
         return output, jet_trk_classification
@@ -162,15 +161,14 @@ def train(X_train_jet, X_train_jet_trk, X_train_trk, y_train, y_train_jet_trk,
             MSE_loss=MSE_loss_fn(output, y_train[i].to(device))
             CCE_jet_trk_loss=CCE_jet_trk_loss_fn(jet_trk_output, y_train_jet_trk[i].to(device))
             
-            loss = MSE_loss + CCE_jet_trk_loss
+            loss = 100*MSE_loss + CCE_jet_trk_loss
+            #loss = MSE_loss
 
             loss.backward()
             optimizer.step()
                         
             cumulative_loss_train+=loss.detach().cpu().numpy().mean()
 
-            torch.cuda.empty_cache()
-            
         cumulative_loss_train = cumulative_loss_train / num_train
         
         model.eval()
@@ -184,12 +182,11 @@ def train(X_train_jet, X_train_jet_trk, X_train_trk, y_train, y_train_jet_trk,
             MSE_loss=MSE_loss_fn(output, y_val[i].to(device))
             CCE_jet_trk_loss=CCE_jet_trk_loss_fn(jet_trk_output, y_val_jet_trk[i].to(device))
             
-            loss = MSE_loss + CCE_jet_trk_loss
-            
+            loss = 100*MSE_loss + CCE_jet_trk_loss
+            #loss = MSE_loss
+
             cumulative_loss_val+=loss.detach().cpu().numpy().mean()
 
-            torch.cuda.empty_cache()
-            
         scheduler.step()
             
         cumulative_loss_val = cumulative_loss_val / num_val
@@ -200,8 +197,6 @@ def train(X_train_jet, X_train_jet_trk, X_train_trk, y_train, y_train_jet_trk,
  
         if (e+1)%step_size==0:
             print("\tReducing Step Size by ", gamma)
-            
-        torch.cuda.empty_cache()
             
     return np.array(combined_history)
 
@@ -223,6 +218,8 @@ combined_history = train(X_train_jet, X_train_jet_trk, X_train_trk, y_train, y_t
                          epochs=Epochs)
 torch.save(model,out_dir+"/model.torch")
 
+torch.cuda.empty_cache()
+
 plt.figure()
 plt.plot(combined_history[:,0], label="Train")
 plt.plot(combined_history[:,1], label="Val")
@@ -240,8 +237,8 @@ true_labels = []
 binary_pred = []
 binary_true = []
 
-predicted_labels = np.array([]).reshape(0,23)
-true_labels = np.array([]).reshape(0,23)
+predicted_labels = np.array([]).reshape(0,3)
+true_labels = np.array([]).reshape(0,3)
 
 num_test = len(X_test_jet)
 for i in range(num_test):
@@ -252,13 +249,12 @@ for i in range(num_test):
     
     MSE_loss=MSE_loss_fn(output, y_test[i].to(device))
     CCE_jet_trk_loss=CCE_jet_trk_loss_fn(jet_trk_output, y_test_jet_trk[i].to(device))
-    
-    loss = MSE_loss + CCE_jet_trk_loss
-    
+
+    loss = 100*MSE_loss + CCE_jet_trk_loss
+    #loss = MSE_loss
+
     cumulative_loss_test+=loss.detach().cpu().numpy().mean()
 
-    torch.cuda.empty_cache()
-      
     predicted_labels = np.vstack((predicted_labels,output.detach().cpu().numpy()))
     true_labels = np.vstack((true_labels,y_test[i].detach().cpu().numpy()))
     
@@ -272,9 +268,15 @@ print("Test MAE:\t", mean_absolute_error(true_labels, predicted_labels))
 print("Test RMSE:\t", root_mean_squared_error(true_labels, predicted_labels))
 
 
-feats = ['top_px','top_py','top_pz','top_E','down_px','down_py','down_pz','down_pT','down_eta','down_phi','down_deltaR','down_deltaEta','down_deltaPhi','bottom_px','bottom_py','bottom_pz','bottom_pT','bottom_eta','bottom_phi','bottom_deltaR','bottom_deltaEta','bottom_deltaPhi','costheta']
+#feats = ['top_px','top_py','top_pz','top_E','down_px','down_py','down_pz','down_pT','down_eta','down_phi','down_deltaR','down_deltaEta','down_deltaPhi','bottom_px','bottom_py','bottom_pz','bottom_pT','bottom_eta','bottom_phi','bottom_deltaR','bottom_deltaEta','bottom_deltaPhi','costheta']
+assert analysis_type=="bottom" or analysis_type=="down"
+if analysis_type=="bottom":
+    feats = ['bottom_px','bottom_py','bottom_pz']
+if analysis_type=="down":
+    feats = ['down_px','down_py','down_pz']
 num_feats = len(feats)
-ranges = [(-1000,1000),(-1000,1000),(-1000,1000),(0,1500),(-1,1),(-1,1),(-1,1),(0,600),(-5,5),(-3.14,3.14),(0,3),(-2,2),(-3,3),(-1,1),(-1,1),(-1,1),(0,600),(-5,5),(-3.14,3.14),(0,3),(-2,2),(-3,3),(-1,1)]
+#ranges = [(-1000,1000),(-1000,1000),(-1000,1000),(0,1500),(-1,1),(-1,1),(-1,1),(0,600),(-5,5),(-3.14,3.14),(0,3),(-2,2),(-3,3),(-1,1),(-1,1),(-1,1),(0,600),(-5,5),(-3.14,3.14),(0,3),(-2,2),(-3,3),(-1,1)]
+ranges = [(-1,1),(-1,1),(-1,1)]
 
 print("Plotting predictions...")
 for i in range(num_feats):
