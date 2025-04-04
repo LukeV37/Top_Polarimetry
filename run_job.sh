@@ -40,7 +40,7 @@ if [ "$bypass_preprocessing" = false ]; then
   do
     mkdir -p "${dir_preprocessing}/run_$i"
     mkdir -p "${dir_datasets}/run_$i"
-    python -u Preprocessing.py $tag $i $dir_preprocessing $dir_datasets > "${dir_preprocessing}/run_$i/preprocessing.log" &
+    python -u Preprocessing.py $tag $i $dir_preprocessing $dir_datasets $analysis_type > "${dir_preprocessing}/run_$i/preprocessing.log" &
   done
   wait
   cd $WORKING_DIR
@@ -76,10 +76,10 @@ if [ "$bypass_train" = false ]; then
   start=`date +%s`
   cd model
   mkdir -p $dir_training
-  python -u Jet_Attention_Model_MSE.py $tag $epochs $step $dir_datasets $dir_training | tee "${dir_training}/training.log"
+  python -u Jet_Attention_Model_MSE.py $tag $epochs $step $dir_datasets $dir_training $analysis_type | tee "${dir_training}/training.log"
   cd $WORKING_DIR
   end=`date +%s`
   runtime=$((end-start))
-  echo -e "\Training Done!"
+  echo -e "\tTraining Done!"
   echo -e "\tTime (sec): $runtime"
 fi
