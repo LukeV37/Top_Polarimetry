@@ -354,7 +354,7 @@ data_dict = {"jet_feats": jet_feats,
              "labels": labels,
             }
 
-with open(out_dir_data+"/preprocessed_"+dataset_tag+"_"+run_num+".pkl","wb") as f:
+with open(out_dir_data+"/run_"+run_num+"/preprocessed_"+dataset_tag+"_"+run_num+".pkl","wb") as f:
     pickle.dump(data_dict, f)
 
 plt.figure()
