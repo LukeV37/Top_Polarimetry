@@ -1,11 +1,12 @@
 #!/bin/bash
 
-if [ -z "$4" ]; then
-    echo "Must enter 4 agruments"
+if [ -z "$5" ]; then
+    echo "Must enter 5 agruments"
     echo -e "\t1: Dataset Tag e.g. unpolarized_10k"
     echo -e "\t2: Polarization: L, R, U"
     echo -e "\t3: Number of Runs"
     echo -e "\t4: Number of Events per Run"
+    echo -e "\t5: Max num cpu cores"
     exit 1
 fi
 
@@ -13,6 +14,7 @@ dataset_tag=$1
 polarization=$2
 num_runs=$3
 num_events_per_run=$4
+max_cpu_cores=$5
 
 # Error handling before launching event generation
 set -e
@@ -70,7 +72,6 @@ function calc_labels {
     tag=$1
     run=$2
 
-    echo -e "\tCalc Labels for Run: $run"
     # Extract LHE file with gzip
     #echo -e "\tDecompressing lhe file..."
     gzip -dk "./pp_tt_semi_full_${tag}/Events/run_01_$run/unweighted_events.lhe.gz"
@@ -91,13 +92,21 @@ function calc_labels {
 
     # Clean workspace (uncompressed version no longer needed)
     rm -f "./pp_tt_semi_full_${tag}/Events/run_01_$run/unweighted_events.lhe"
-
-    echo -e "\tDone Calc Labels for Run: $run"
 }
 
+job=0
+batch=1
 for (( i=0 ; i<$num_runs ; i++ ));
 do
+    echo -e "\t\tSubmitting job to calc labels: $i"
     calc_labels $dataset_tag $i &
+    job=$((job+1))
+    if [ $job == $max_cpu_cores ]; then
+        echo -e "\tStopping jobs submissions! Please wait for batch $batch to finish..."
+        wait
+        job=0
+        batch=$((batch+1))
+    fi
 done
 wait
 
