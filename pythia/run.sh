@@ -4,7 +4,7 @@ if [ -z "$3" ]; then
     echo "Must enter 3 agruments"
     echo -e "\t1: Dataset Tag (from MadGraph)"
     echo -e "\t2: Number of runs (from MadGraph)"
-    echo -e "\t3: Number of batches (based on cpu cores)"
+    echo -e "\t3: Max num cpu cores"
     exit 1
 fi
 
