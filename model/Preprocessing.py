@@ -338,12 +338,14 @@ trk_feats = ak.concatenate(trk_feat_list, axis=2)
 
 #label_list = [top_px,top_py,top_pz,top_E,down_px,down_py,down_pz,down_pT,down_eta,down_phi,down_deltaR,down_deltaEta,down_deltaPhi,bottom_px,bottom_py,bottom_pz,bottom_pT,bottom_eta,bottom_phi,bottom_deltaR,bottom_deltaEta,bottom_deltaPhi,costheta]
 
-assert analysis_type=="bottom" or analysis_type=="down"
+assert analysis_type=="bottom" or analysis_type=="down" or analysis_type=="top"
 
 if analysis_type=="bottom":
     label_list = [bottom_px,bottom_py,bottom_pz]
 if analysis_type=="down":
     label_list = [down_px,down_py,down_pz]
+if analysis_type=="top":
+    label_list = [top_px,top_py,top_pz,top_E]
 
 label_list = [x[:,np.newaxis] for x in label_list]
 labels = ak.concatenate(label_list, axis=1)

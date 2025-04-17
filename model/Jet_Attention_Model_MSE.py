@@ -18,6 +18,16 @@ in_dir = str(sys.argv[4])
 out_dir = str(sys.argv[5])
 analysis_type = str(sys.argv[6])
 
+assert analysis_type=="bottom" or analysis_type=="down" or analysis_type=="top"
+
+if analysis_type=="bottom":
+    feats = ['bottom_px','bottom_py','bottom_pz']
+if analysis_type=="down":
+    feats = ['down_px','down_py','down_pz']
+if analysis_type=="top":
+    feats = ['top_px','top_py','top_pz','top_E']
+num_feats = len(feats)
+
 with open(in_dir+"/data_batched_combined_MSE_"+tag+".pkl","rb") as f:
     data_dict = pickle.load( f )
 
@@ -90,7 +100,7 @@ class Model(nn.Module):
     def __init__(self):
         super(Model, self).__init__()   
         
-        self.embed_dim = 256
+        self.embed_dim = 32
         self.num_heads = 4
         self.num_jet_feats = 4
         self.num_trk_feats = 6
@@ -106,7 +116,7 @@ class Model(nn.Module):
         self.stack3 = Stack(self.embed_dim, self.num_heads)
 
         # Regression Task
-        self.regression = nn.Linear(self.embed_dim, 3)
+        self.regression = nn.Linear(self.embed_dim, num_feats)
         # Classification Task
         self.jet_trk_classification = nn.Linear(self.embed_dim, 3)
 
@@ -125,7 +135,10 @@ class Model(nn.Module):
     
         # Get output
         jet_embedding = torch.squeeze(jet_embedding,1)
-        output = F.tanh(self.regression(jet_embedding))
+        if analysis_type=="bottom" or analysis_type=="down":
+            output = F.tanh(self.regression(jet_embedding))
+        if analysis_type=="top":
+            output = self.regression(jet_embedding)
         jet_trk_classification = self.jet_trk_classification(jet_trk_embedding)
         
         return output, jet_trk_classification
@@ -197,6 +210,8 @@ def train(X_train_jet, X_train_jet_trk, X_train_trk, y_train, y_train_jet_trk,
  
         if (e+1)%step_size==0:
             print("\tReducing Step Size by ", gamma)
+
+        torch.save(model,out_dir+"/model_Epoch_"+str(e+1)+".torch")
             
     return np.array(combined_history)
 
@@ -216,7 +231,7 @@ CCE_jet_trk_loss_fn = nn.CrossEntropyLoss()
 combined_history = train(X_train_jet, X_train_jet_trk, X_train_trk, y_train, y_train_jet_trk,
                          X_val_jet, X_val_jet_trk, X_val_trk, y_val, y_val_jet_trk,
                          epochs=Epochs)
-torch.save(model,out_dir+"/model.torch")
+torch.save(model,out_dir+"/model_final.torch")
 
 torch.cuda.empty_cache()
 
@@ -237,8 +252,8 @@ true_labels = []
 binary_pred = []
 binary_true = []
 
-predicted_labels = np.array([]).reshape(0,3)
-true_labels = np.array([]).reshape(0,3)
+predicted_labels = np.array([]).reshape(0,num_feats)
+true_labels = np.array([]).reshape(0,num_feats)
 
 num_test = len(X_test_jet)
 for i in range(num_test):
@@ -267,16 +282,12 @@ print()
 print("Test MAE:\t", mean_absolute_error(true_labels, predicted_labels))
 print("Test RMSE:\t", root_mean_squared_error(true_labels, predicted_labels))
 
-
 #feats = ['top_px','top_py','top_pz','top_E','down_px','down_py','down_pz','down_pT','down_eta','down_phi','down_deltaR','down_deltaEta','down_deltaPhi','bottom_px','bottom_py','bottom_pz','bottom_pT','bottom_eta','bottom_phi','bottom_deltaR','bottom_deltaEta','bottom_deltaPhi','costheta']
-assert analysis_type=="bottom" or analysis_type=="down"
-if analysis_type=="bottom":
-    feats = ['bottom_px','bottom_py','bottom_pz']
-if analysis_type=="down":
-    feats = ['down_px','down_py','down_pz']
-num_feats = len(feats)
 #ranges = [(-1000,1000),(-1000,1000),(-1000,1000),(0,1500),(-1,1),(-1,1),(-1,1),(0,600),(-5,5),(-3.14,3.14),(0,3),(-2,2),(-3,3),(-1,1),(-1,1),(-1,1),(0,600),(-5,5),(-3.14,3.14),(0,3),(-2,2),(-3,3),(-1,1)]
-ranges = [(-1,1),(-1,1),(-1,1)]
+if analysis_type=="down" or analysis_type=="bottom":
+    ranges = [(-1,1),(-1,1),(-1,1)]
+if analysis_type=="top":
+    ranges = [(-1000,1000),(-1000,1000),(-1000,1000),(0,1500)]
 
 print("Plotting predictions...")
 for i in range(num_feats):
