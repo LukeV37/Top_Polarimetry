@@ -17,7 +17,7 @@ source setup.sh
 if [ "$bypass_madgraph" = false ]; then
   start=`date +%s`
   cd madgraph
-  ./run.sh $tag $process $num_runs $num_events_per_run $max_cpu_cores
+  ./run.sh $tag $process $num_runs $num_events_per_run $max_cpu_cores $seed
   cd $WORKING_DIR
   end=`date +%s`
   runtime=$((end-start))
