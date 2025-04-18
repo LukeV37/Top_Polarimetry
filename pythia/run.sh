@@ -12,8 +12,8 @@ tag=$1
 runs=$2
 max_cpu_cores=$3
 
-mkdir "WS_${tag}"
-mkdir "WS_${tag}/logs"
+mkdir -p "WS_${tag}"
+mkdir -p "WS_${tag}/logs"
 
 cd src
 make generate_dataset
