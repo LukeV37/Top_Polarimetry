@@ -1,12 +1,13 @@
 #!/bin/bash
 
-if [ -z "$5" ]; then
-    echo "Must enter 5 agruments"
+if [ -z "$6" ]; then
+    echo "Must enter 6 agruments"
     echo -e "\t1: Dataset Tag e.g. unpolarized_10k"
     echo -e "\t2: Polarization: L, R, U"
     echo -e "\t3: Number of Runs"
     echo -e "\t4: Number of Events per Run"
     echo -e "\t5: Max num cpu cores"
+    echo -e "\t6: Initial seed"
     exit 1
 fi
 
@@ -15,6 +16,7 @@ polarization=$2
 num_runs=$3
 num_events_per_run=$4
 max_cpu_cores=$5
+seed=$6
 
 # Error handling before launching event generation
 set -e
@@ -43,6 +45,7 @@ fi
 #sed "s/\(.*\)= nevents\(.*\)/ $num_events = nevents\2/" include/run_card.dat > run_card.tmp
 sed "s/multi_run.*/multi_run $num_runs/" include/multi_run.config > multi_run.tmp
 sed -i "s/set nevents.*/set nevents $num_events_per_run/" multi_run.tmp
+sed -i "s/set iseed.*/set iseed $seed/" multi_run.tmp
 
 # Run mg5_aMC binary on the process card
 ../submodules/mg5amcnlo-v3.5.5/bin/mg5_aMC proc_card.tmp
