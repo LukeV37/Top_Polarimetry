@@ -8,3 +8,4 @@ madgraph/pp_tt_semi_full*
 *.png
 *.log
 model/WS*
+*__pycache__
