@@ -60,6 +60,12 @@ print("Training Batches: ", len(y_train))
 print("Validation Batches: ", len(y_val))
 print("Testing Batches: ", len(y_test))
 
+def NormLoss(pred):
+    # pred is shape (N,3) where N is batch size
+    norm = torch.square(pred[:,0])+torch.square(pred[:,1])+torch.square(pred[:,2])
+    loss = torch.square(norm-1) # Expecatation value is 1 so remove mean
+    return torch.mean(loss) # Use mean as reduction operation
+
 ### Define Training Loop
 def train(X_train_jet, X_train_jet_trk, X_train_trk, y_train, y_train_jet_trk,
           X_val_jet, X_val_jet_trk, X_val_trk, y_val, y_val_jet_trk,
@@ -90,8 +96,12 @@ def train(X_train_jet, X_train_jet_trk, X_train_trk, y_train, y_train_jet_trk,
             
             MSE_loss=MSE_loss_fn(output, y_train[i].to(device))
             CCE_jet_trk_loss=CCE_jet_trk_loss_fn(jet_trk_output, y_train_jet_trk[i].to(device))
+            Norm_loss=NormLoss(output)
             
-            loss = 100*MSE_loss + CCE_jet_trk_loss
+            if analysis_type=="bottom" or analysis_type=="down":
+                loss = 100*MSE_loss + CCE_jet_trk_loss + Norm_loss
+            if analysis_type=="top":
+                loss = 100*MSE_loss + CCE_jet_trk_loss
             #loss = MSE_loss
 
             loss.backward()
@@ -111,8 +121,12 @@ def train(X_train_jet, X_train_jet_trk, X_train_trk, y_train, y_train_jet_trk,
             
             MSE_loss=MSE_loss_fn(output, y_val[i].to(device))
             CCE_jet_trk_loss=CCE_jet_trk_loss_fn(jet_trk_output, y_val_jet_trk[i].to(device))
-            
-            loss = 100*MSE_loss + CCE_jet_trk_loss
+            Norm_loss=NormLoss(output)
+
+            if analysis_type=="bottom" or analysis_type=="down":
+                loss = 100*MSE_loss + CCE_jet_trk_loss + Norm_loss
+            if analysis_type=="top":
+                loss = 100*MSE_loss + CCE_jet_trk_loss
             #loss = MSE_loss
 
             cumulative_loss_val+=loss.detach().cpu().numpy().mean()
@@ -181,8 +195,12 @@ for i in range(num_test):
     
     MSE_loss=MSE_loss_fn(output, y_test[i].to(device))
     CCE_jet_trk_loss=CCE_jet_trk_loss_fn(jet_trk_output, y_test_jet_trk[i].to(device))
+    Norm_loss=NormLoss(output)
 
-    loss = 100*MSE_loss + CCE_jet_trk_loss
+    if analysis_type=="bottom" or analysis_type=="down":
+        loss = 100*MSE_loss + CCE_jet_trk_loss + Norm_loss
+    if analysis_type=="top":
+        loss = 100*MSE_loss + CCE_jet_trk_loss
     #loss = MSE_loss
 
     cumulative_loss_test+=loss.detach().cpu().numpy().mean()
