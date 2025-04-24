@@ -225,8 +225,8 @@ for i in range(num_feats):
     plt.xlabel('Predicted '+feats[i],loc='right')
     plt.ylabel('True '+feats[i],loc='top')
     diff = ranges[i][1] - ranges[i][0]
-    plt.text(ranges[i][1]-0.3*diff,ranges[i][0]+0.2*diff,"$R^2$ value: "+str(round(r2_score(np.ravel(predicted_labels[:,i]),np.ravel(true_labels[:,i])),3)),backgroundcolor='r',color='k')
-    #print("R^2 value: ", round(r2_score(predicted_labels[:,i],true_labels[:,i]),3))
+    plt.text(ranges[i][1]-0.3*diff,ranges[i][0]+0.2*diff,"$R^2$ value: "+str(round(r2_score(np.ravel(true_labels[:,i]),np.ravel(predicted_labels[:,i])),3)),backgroundcolor='r',color='k')
+    #print("R^2 value: ", round(r2_score(true_labels[:,i],predicted_labels[:,i]),3))
     plt.savefig(out_dir+"/pred_2d_"+feats[i]+".png")
     #plt.show()
     plt.close()
