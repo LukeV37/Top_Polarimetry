@@ -25,7 +25,7 @@ out_dir_plots = str(sys.argv[3])
 out_dir_data = str(sys.argv[4])
 analysis_type = str(sys.argv[5])
 
-assert analysis_type=="bottom" or analysis_type=="down" or analysis_type=="top" or analysis_type=="eval"
+assert analysis_type=="bottom" or analysis_type=="down" or analysis_type=="top" or analysis_type=="eval" or analysis_type=="direct"
 
 print("Reading Sample...")
 
@@ -348,6 +348,8 @@ if analysis_type=="down":
     label_list = [down_px,down_py,down_pz]
 if analysis_type=="eval":
     label_list = [top_px,top_py,top_pz,top_E,bottom_px,bottom_py,bottom_pz,down_px,down_py,down_pz]
+if analysis_type=="direct":
+    label_list = [costheta]
 
 label_list = [x[:,np.newaxis] for x in label_list]
 labels = ak.concatenate(label_list, axis=1)
