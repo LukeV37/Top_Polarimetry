@@ -87,6 +87,7 @@ class Model(nn.Module):
             output = self.regression(jet_embedding)
         if self.analysis_type=="direct":
             output = 2*F.tanh(self.regression(jet_embedding))
+            
         jet_trk_classification = self.jet_trk_classification(jet_trk_embedding)
         
         return output, jet_trk_classification

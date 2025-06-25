@@ -30,6 +30,7 @@ if analysis_type=="down":
     feats = ['down_px','down_py','down_pz']
 if analysis_type=="direct":
     feats = ['costheta']
+
 num_feats = len(feats)
 
 with open(in_dir+"/data_batched_combined_MSE_"+tag+".pkl","rb") as f:
