@@ -20,7 +20,7 @@ in_dir = str(sys.argv[4])
 out_dir = str(sys.argv[5])
 analysis_type = str(sys.argv[6])
 
-assert analysis_type=="bottom" or analysis_type=="down" or analysis_type=="top"
+assert analysis_type=="bottom" or analysis_type=="down" or analysis_type=="top" or analysis_type=="direct"
 
 if analysis_type=="top":
     feats = ['top_px','top_py','top_pz','top_E']
@@ -28,6 +28,9 @@ if analysis_type=="bottom":
     feats = ['bottom_px','bottom_py','bottom_pz']
 if analysis_type=="down":
     feats = ['down_px','down_py','down_pz']
+if analysis_type=="direct":
+    feats = ['costheta']
+
 num_feats = len(feats)
 
 with open(in_dir+"/data_batched_combined_MSE_"+tag+".pkl","rb") as f:
