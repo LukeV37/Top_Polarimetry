@@ -61,7 +61,7 @@ print("Validation Batches: ", len(y_val))
 print("Testing Batches: ", len(y_test))
 
 def NormLoss(pred, true):
-    # pred and true is shape (N,3) where N is num jets in event
+    # pred and true is shape (N,3) where N is batch size 
     cos_similarity = true[:,0]*pred[:,0] + true[:,1]*pred[:,1] + true[:,2]*pred[:,2]
     loss = torch.square(cos_similarity-1) # Expecatation value is 1 so remove mean
     return loss
