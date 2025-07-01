@@ -60,11 +60,11 @@ print("Training Batches: ", len(y_train))
 print("Validation Batches: ", len(y_val))
 print("Testing Batches: ", len(y_test))
 
-def NormLoss(pred):
-    # pred is shape (N,3) where N is batch size
-    norm = torch.square(pred[:,0])+torch.square(pred[:,1])+torch.square(pred[:,2])
-    loss = torch.square(norm-1) # Expecatation value is 1 so remove mean
-    return torch.mean(loss) # Use mean as reduction operation
+def NormLoss(pred, true):
+    # pred and true is shape (N,3) where N is num jets in event
+    cos_similarity = true[:,0]*pred[:,0] + true[:,1]*pred[:,1] + true[:,2]*pred[:,2]
+    loss = torch.square(cos_similarity-1) # Expecatation value is 1 so remove mean
+    return loss
 
 ### Define Training Loop
 def train(X_train_jet, X_train_jet_trk, X_train_trk, y_train, y_train_jet_trk,
@@ -195,7 +195,7 @@ for i in range(num_test):
     
     MSE_loss=MSE_loss_fn(output, y_test[i].to(device))
     CCE_jet_trk_loss=CCE_jet_trk_loss_fn(jet_trk_output, y_test_jet_trk[i].to(device))
-    Norm_loss=NormLoss(output)
+    Norm_loss=NormLoss(output, y_test[i].to(device))
 
     if analysis_type=="bottom" or analysis_type=="down":
         loss = 100*MSE_loss + CCE_jet_trk_loss + Norm_loss
