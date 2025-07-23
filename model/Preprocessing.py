@@ -112,7 +112,13 @@ selected_trk_fromDown = []
 selected_trk_fromUp = []
 selected_trk_fromBottom = []
 
-deltaR_cut = 1.0
+deltaR_cut = 1.5
+
+# Dict for storing results
+results_dict = {}
+results_dict["raw"] = []
+results_dict["jet_pT_cut"] = []
+results_dict["matching_deltaR_cut"] = []
 
 # Initialize lists for plotting
 pt_partons = []
@@ -135,11 +141,15 @@ for i in range(num_events):
     if i%mod==0:
         print("\tProcessing: ", i+mod, " / ", len(jet_pt), end="\r")
 
+    results_dict["raw"].append(costheta[i])
+
     # Ensure at least one fat jet
     if len(jet_pt[i])<1:
         missing_jet+=1
         selected_events.append(False)
         continue
+    
+    results_dict["jet_pT_cut"].append(costheta[i])
 
     # Save parton 3-Vector
     parton = vector.MomentumObject3D(px=top_px[i], py=top_py[i], pz=top_pz[i])
@@ -156,6 +166,8 @@ for i in range(num_events):
         cutflow_deltaR+=1
         selected_events.append(False)
         continue
+
+    results_dict["matching_deltaR_cut"].append(costheta[i])
 
     # Closest jet in deltaR to parton is matched jet
     matched_jet = candidate
@@ -198,6 +210,9 @@ for i in range(num_events):
     selected_trk_fromDown.append(jet_trk_fromDown[i][argmin])
     selected_trk_fromUp.append(jet_trk_fromUp[i][argmin])
     selected_trk_fromBottom.append(jet_trk_fromBottom[i][argmin])
+
+with open(out_dir_data+"/run_"+run_num+"/cos_theta_"+dataset_tag+"_"+run_num+".pkl","wb") as f:
+    pickle.dump(results_dict, f)
 
 print()    
 print("\tEvents without reco jet: ", missing_jet, "/", num_events)

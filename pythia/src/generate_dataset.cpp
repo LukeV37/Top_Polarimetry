@@ -88,7 +88,7 @@ int main(int argc, char *argv[])
     jetDefs["CA"] = fastjet::JetDefinition(
       fastjet::cambridge_algorithm, 0.4, fastjet::E_scheme, fastjet::Best);
     jetDefs["fatjet"] = fastjet::JetDefinition(
-      fastjet::cambridge_algorithm, 1.0, fastjet::E_scheme, fastjet::Best);
+      fastjet::cambridge_algorithm, 1.5, fastjet::E_scheme, fastjet::Best);
 
     // Allow for possibility of a few faulty events.
     int nAbort = 10;
