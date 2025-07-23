@@ -112,7 +112,7 @@ selected_trk_fromDown = []
 selected_trk_fromUp = []
 selected_trk_fromBottom = []
 
-deltaR_cut = 1.0
+deltaR_cut = 1.5
 
 # Dict for storing results
 results_dict = {}
