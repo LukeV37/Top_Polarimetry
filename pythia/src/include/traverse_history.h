@@ -29,13 +29,14 @@ int find_b_from_top(const Pythia8::Event& event, int top_idx){
     int d2 = top.daughter2();
 
     // Loop over top daughters; look for b quark
+    int current_idx = top_idx;
     for (int i=d1; i<=d2; i++){
         if(event[i].idAbs()==5) {
-            return i; // If top decayed to b, return idx
+            return find_b_from_top(event, i); // If top decayed to b, return idx
         }
     }
 
-    return -1;
+    return current_idx;
 }
 
 int find_down_from_W(const Pythia8::Event& event, int W_idx){
@@ -102,6 +103,77 @@ int find_up_from_top(const Pythia8::Event& event, int top_idx){
         }
         // Find down quark directly from top
         if (event[i].idAbs()==2 || event[i].idAbs()==4){
+            return i;
+        }
+    }
+    return -1; // Nothing good
+}
+
+int find_lep_from_W(const Pythia8::Event& event, int W_idx){
+    auto &Wboson = event[W_idx];
+
+    int d1 = Wboson.daughter1();
+    int d2 = Wboson.daughter2();
+
+    if (event[d1].idAbs()==24) return find_lep_from_W(event, d1);
+
+    for (int i=d1; d1<=d2; i++){
+        if (event[i].idAbs()==11 || event[i].idAbs()==13){
+            return i;
+        }
+    }
+    return -1; // Nothing good
+}
+
+int find_lep_from_top(const Pythia8::Event& event, int top_idx){
+    auto &top = event[top_idx];
+
+    int d1 = top.daughter1();
+    int d2 = top.daughter2();
+
+    for (int i=d1; d1<=d2; i++){
+        // Find lep through W boson
+        if (event[i].idAbs()==24){
+            return find_lep_from_W(event, i);
+        }
+        // Find lepton directly from top
+        if (event[i].idAbs()==11 || event[i].idAbs()==13){
+            return i;
+        }
+    }
+    return -1; // Nothing good
+}
+
+int find_nu_from_W(const Pythia8::Event& event, int W_idx){
+
+    auto &Wboson = event[W_idx];
+
+    int d1 = Wboson.daughter1();
+    int d2 = Wboson.daughter2();
+
+    if (event[d1].idAbs()==24) return find_nu_from_W(event, d1);
+
+    for (int i=d1; d1<=d2; i++){
+        if (event[i].idAbs()==12 || event[i].idAbs()==14){
+            return i;
+        }
+    }
+    return -1; // Nothing good
+}
+
+int find_nu_from_top(const Pythia8::Event& event, int top_idx){
+    auto &top = event[top_idx];
+
+    int d1 = top.daughter1();
+    int d2 = top.daughter2();
+
+    for (int i=d1; d1<=d2; i++){
+        // Find nu through W boson
+        if (event[i].idAbs()==24){
+            return find_nu_from_W(event, i);
+        }
+        // Find nuton directly from top
+        if (event[i].idAbs()==12 || event[i].idAbs()==14 || event[i].idAbs()==16){
             return i;
         }
     }
