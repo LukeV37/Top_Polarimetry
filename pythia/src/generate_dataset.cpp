@@ -62,6 +62,17 @@ int main(int argc, char *argv[])
     Pythia->Branch("p_fromNu", &p_fromNu);
     Pythia->Branch("p_fromAntiBottom", &p_fromAntiBottom);
 
+    float top_px, top_py, top_pz, top_e;
+    float down_px, down_py, down_pz, down_e;
+    Pythia->Branch("top_px", &top_px);
+    Pythia->Branch("top_py", &top_py);
+    Pythia->Branch("top_pz", &top_pz);
+    Pythia->Branch("top_e", &top_e);
+    Pythia->Branch("down_px", &down_px);
+    Pythia->Branch("down_py", &down_py);
+    Pythia->Branch("down_pz", &down_pz);
+    Pythia->Branch("down_e", &down_e);
+
     // Configure Jet parameters
     float pTmin_jet = 250; // GeV
     std::map<TString, fastjet::JetDefinition> jetDefs;
@@ -114,6 +125,15 @@ int main(int argc, char *argv[])
         fromLepton = find_daughters(pythia.event, lepton_idx);
         fromNu = find_daughters(pythia.event, nu_idx);
         fromAntiBottom = find_daughters(pythia.event, anti_bottom_idx);
+
+        top_px = pythia.event[top_idx].px();
+        top_py = pythia.event[top_idx].py();
+        top_pz = pythia.event[top_idx].pz();
+        top_e = pythia.event[top_idx].e();
+        down_px = pythia.event[down_idx].px();
+        down_py = pythia.event[down_idx].py();
+        down_pz = pythia.event[down_idx].pz();
+        down_e = pythia.event[down_idx].e();
 
         if (event_no==0){
             std::cout << "top_idx: " << top_idx << std::endl;
