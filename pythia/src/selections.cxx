@@ -11,6 +11,7 @@
 #include "TString.h"
 
 #include "include/isolated_lepton.h"
+#include "include/remove_particles_from_clustering.h"
 
 int main(int argc, char *argv[])
 {
@@ -60,7 +61,37 @@ int main(int argc, char *argv[])
             fastjet_particles.push_back(fj);
         }
         int isolated_lepton_idx = isolated_lepton(fastjet_particles, fromLepton, pid);
-        //std::cout << isolated_lepton_idx << std::endl;
+        std::vector<int> lepton_idx;
+        lepton_idx.push_back(isolated_lepton_idx);
+
+        std::vector<fastjet::PseudoJet> particles_no_lepton = remove_particles_from_clustering(fastjet_particles, lepton_idx);
+        //std::cout << fastjet_particles.size() << " " << particles_no_lepton.size() << std::endl;
+
+        // Cluster particles and pick up hardest largeR jet
+        float R_large = 1.5;
+        float pTmin_jet_large = 250; // GeV
+        fastjet::JetDefinition jetDef_large = fastjet::JetDefinition(fastjet::cambridge_algorithm, R_large, fastjet::E_scheme, fastjet::Best);
+        fastjet::ClusterSequence clustSeq_large(particles_no_lepton, jetDef_large);
+        auto jets_large = fastjet::sorted_by_pt( clustSeq_large.inclusive_jets(pTmin_jet_large) );
+
+        if (jets_large.size()==0) continue;
+        fastjet::PseudoJet hardest_jet = jets_large[0];
+        std::vector<int> hardest_jet_constituents;
+
+        for (auto trk:hardest_jet.constituents()){
+           hardest_jet_constituents.push_back(trk.user_index());
+        }
+        std::vector<fastjet::PseudoJet> particles_no_fatjet= remove_particles_from_clustering(particles_no_lepton, hardest_jet_constituents);
+        std::cout << fastjet_particles.size() << " " << particles_no_lepton.size() << " " << particles_no_fatjet.size() << std::endl;
+
+        float R_small = 0.4;
+        float pTmin_jet_small = 10; // GeV
+        fastjet::JetDefinition jetDef_small = fastjet::JetDefinition(fastjet::cambridge_algorithm, R_small, fastjet::E_scheme, fastjet::Best);
+        fastjet::ClusterSequence clustSeq_small(particles_no_fatjet, jetDef_small);
+        auto jets_small = fastjet::sorted_by_pt( clustSeq_small.inclusive_jets(pTmin_jet_small) );
+
+        std::cout << "Num Small Jets: " << jets_small.size() << std::endl;
+
     }
 
     return 0;
