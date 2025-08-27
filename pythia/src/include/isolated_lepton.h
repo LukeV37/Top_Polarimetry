@@ -17,7 +17,7 @@ int isolated_lepton(std::vector<fastjet::PseudoJet> fj, std::vector<int> *fromLe
         if (lepton.delta_R(fj[i]) < Isolation_deltaR) isIsolated=0;
     }
 
-    std::cout << "Lepton is Isolated: " << isIsolated << std::endl;
+    //std::cout << "Lepton is Isolated: " << isIsolated << std::endl;
 
     return lepton_idx;
 }
