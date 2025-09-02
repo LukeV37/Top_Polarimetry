@@ -11,16 +11,25 @@
 #include "TString.h"
 
 #include "include/isolated_lepton.h"
+#include "include/get_MET.h"
 #include "include/remove_particles_from_clustering.h"
 
 int main(int argc, char *argv[])
 {
-    //std::string inputFile = std::string("dataset_U_10k_test_0.root");
-    TString inputFile = "../WS_U_10k_test/dataset_U_10k_test_0.root";
+    if (argc < 2){
+        std::cout << "Error! Must enter 2 arguments" << std::endl;
+        std::cout << "1: Dataset Tag (from MadGraph)" << std::endl;
+        std::cout << "2: Number of Runs (from MadGraph)" << std::endl;
+        return 1;
+    }
+    char *dataset_tag = argv[1];
+    char *run_num = argv[2];
 
     // Open file and extract training tree
+    TString inputFile = TString("../WS_")+TString(dataset_tag)+TString("/dataset_")+TString(dataset_tag)+TString("_")+TString(run_num)+TString(".root");
     TFile *input_file = new TFile(inputFile, "READ");
     TTree *pythia = (TTree*)input_file->Get("pythia");
+
 
     // Initialize variables, declare new branch, set needed old branches
     std::vector<float> *px = 0;
@@ -46,6 +55,26 @@ int main(int argc, char *argv[])
     pythia->SetBranchAddress("p_fromNu", &fromNu);
     pythia->SetBranchAddress("p_fromAntiBottom", &fromAntiBottom);
 
+    // Initialize output ROOT file, TTree, and Branches
+    TFile *output = new TFile(TString("../WS_")+TString(dataset_tag)+TString("/dataset_selected_")+TString(dataset_tag)+TString("_")+TString(run_num)+TString(".root"),"recreate");
+
+    float lepton_pT;
+    float lepton_eta;
+    float lepton_phi;
+    float nu_MET;
+    float nu_phi;
+    float probe_jet_pT;
+    float probe_jet_eta;
+    float probe_jet_phi;
+    std::vector<float> probe_jet_constituent_pT;
+    std::vector<float> probe_jet_constituent_eta;
+    std::vector<float> probe_jet_constituent_phi;
+    std::vector<float> probe_jet_constituent_q;
+    std::vector<float> probe_jet_constituent_PID;
+    std::vector<float> balance_jets_pT;
+    std::vector<float> balance_jets_eta;
+    std::vector<float> balance_jets_phi;
+
     // Loop over entries and determine the truth label
     int nEntries = pythia->GetEntries();
     for (int event=0; event<nEntries; event++){
@@ -61,8 +90,10 @@ int main(int argc, char *argv[])
             fastjet_particles.push_back(fj);
         }
         int isolated_lepton_idx = isolated_lepton(fastjet_particles, fromLepton, pid);
-        std::vector<int> lepton_idx;
-        lepton_idx.push_back(isolated_lepton_idx);
+        std::vector<int> lepton_nu_idx;
+        lepton_nu_idx.push_back(isolated_lepton_idx);
+
+        int nu_idx = get_MET(fastjet_particles, fromNu, pid);
 
         std::vector<fastjet::PseudoJet> particles_no_lepton = remove_particles_from_clustering(fastjet_particles, lepton_idx);
         //std::cout << fastjet_particles.size() << " " << particles_no_lepton.size() << std::endl;
@@ -82,6 +113,7 @@ int main(int argc, char *argv[])
            hardest_jet_constituents.push_back(trk.user_index());
         }
         std::vector<fastjet::PseudoJet> particles_no_fatjet= remove_particles_from_clustering(particles_no_lepton, hardest_jet_constituents);
+
         std::cout << fastjet_particles.size() << " " << particles_no_lepton.size() << " " << particles_no_fatjet.size() << std::endl;
 
         float R_small = 0.4;
