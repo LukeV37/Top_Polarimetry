@@ -153,7 +153,7 @@ int main(int argc, char *argv[])
 
         // prepare for filling
         p_px.clear(); p_py.clear(); p_pz.clear(); p_e.clear(); p_pT.clear(); p_eta.clear(); p_phi.clear(); p_q.clear(); p_d0.clear(); p_z0.clear();
-        p_pid.clear(); p_fromDown.clear(); p_fromUp.clear(); p_fromBottom.clear(); p_fromLepton.clear(); //p_fromNu.clear(); p_fromAntiBottom.clear();
+        p_pid.clear(); p_fromDown.clear(); p_fromUp.clear(); p_fromBottom.clear(); p_fromLepton.clear(); p_fromNu.clear(); p_fromAntiBottom.clear();
 
 
         // Loop through particles in the event
