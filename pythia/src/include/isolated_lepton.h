@@ -1,4 +1,4 @@
-int isolated_lepton(std::vector<fastjet::PseudoJet> fj, std::vector<int> *fromLepton, std::vector<int> *pid)
+int isolated_lepton(std::vector<fastjet::PseudoJet> fj, std::vector<int> *fromLepton, std::vector<int> *pid, float *minDeltaR)
 {
     int lepton_idx=-1;
     for (int i=0; i<fromLepton->size(); i++){
@@ -9,12 +9,13 @@ int isolated_lepton(std::vector<fastjet::PseudoJet> fj, std::vector<int> *fromLe
         }
     }
 
-    int isIsolated = 1;
-    float Isolation_deltaR = 0.1;
+    *minDeltaR = 999;
+    float deltaR;
     fastjet::PseudoJet lepton = fj[lepton_idx];
     for (int i=0; i<fj.size(); i++){
         if (i==lepton_idx) continue;
-        if (lepton.delta_R(fj[i]) < Isolation_deltaR) isIsolated=0;
+        deltaR = lepton.delta_R(fj[i]);
+        if (deltaR < *minDeltaR) *minDeltaR=deltaR;
     }
 
     //std::cout << "Lepton is Isolated: " << isIsolated << std::endl;
