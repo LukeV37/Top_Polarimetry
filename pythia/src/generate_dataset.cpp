@@ -11,9 +11,11 @@
 #include "TRandom3.h"
 #include <TRandom.h>
 #include "TString.h"
+#include "TLorentzVector.h"
 
 #include "include/estimate_ip.h"
 #include "include/traverse_history.h"
+#include "include/calc_labels.h"
 
 int main(int argc, char *argv[])
 {
@@ -63,15 +65,23 @@ int main(int argc, char *argv[])
     Pythia->Branch("p_fromAntiBottom", &p_fromAntiBottom);
 
     float top_px, top_py, top_pz, top_e;
+    float anti_top_px, anti_top_py, anti_top_pz, anti_top_e;
     float down_px, down_py, down_pz, down_e;
+    float costheta;
+    TLorentzVector p_t, p_tbar, p_d;
     Pythia->Branch("top_px", &top_px);
     Pythia->Branch("top_py", &top_py);
     Pythia->Branch("top_pz", &top_pz);
     Pythia->Branch("top_e", &top_e);
+    Pythia->Branch("anti_top_px", &anti_top_px);
+    Pythia->Branch("anti_top_py", &anti_top_py);
+    Pythia->Branch("anti_top_pz", &anti_top_pz);
+    Pythia->Branch("anti_top_e", &anti_top_e);
     Pythia->Branch("down_px", &down_px);
     Pythia->Branch("down_py", &down_py);
     Pythia->Branch("down_pz", &down_pz);
     Pythia->Branch("down_e", &down_e);
+    Pythia->Branch("costheta", &costheta);
 
     // Configure Jet parameters
     float pTmin_jet = 250; // GeV
@@ -130,10 +140,20 @@ int main(int argc, char *argv[])
         top_py = pythia.event[top_idx].py();
         top_pz = pythia.event[top_idx].pz();
         top_e = pythia.event[top_idx].e();
+        anti_top_px = pythia.event[anti_top_idx].px();
+        anti_top_py = pythia.event[anti_top_idx].py();
+        anti_top_pz = pythia.event[anti_top_idx].pz();
+        anti_top_e = pythia.event[anti_top_idx].e();
         down_px = pythia.event[down_idx].px();
         down_py = pythia.event[down_idx].py();
         down_pz = pythia.event[down_idx].pz();
         down_e = pythia.event[down_idx].e();
+
+        p_t = TLorentzVector(top_px, top_py, top_pz, top_e);
+        p_tbar = TLorentzVector(anti_top_px, anti_top_py, anti_top_pz, anti_top_e);
+        p_d = TLorentzVector(down_px, down_py, down_pz, down_e);
+
+        costheta = calc_costheta(p_t, p_tbar, p_d);
 
         if (event_no==0){
             std::cout << "top_idx: " << top_idx << std::endl;
