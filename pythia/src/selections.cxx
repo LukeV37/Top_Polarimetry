@@ -111,8 +111,8 @@ int main(int argc, char *argv[])
     fastjet->Branch("probe_jet_constituent_pT", &probe_jet_constituent_pT);
     fastjet->Branch("probe_jet_constituent_eta", &probe_jet_constituent_eta);
     fastjet->Branch("probe_jet_constituent_phi", &probe_jet_constituent_phi);
-    //fastjet->Branch("probe_jet_constituent_q", &probe_jet_constituent_q);
-    //fastjet->Branch("probe_jet_constituent_PID", &probe_jet_constituent_PID);
+    fastjet->Branch("probe_jet_constituent_q", &probe_jet_constituent_q);
+    fastjet->Branch("probe_jet_constituent_PID", &probe_jet_constituent_PID);
     fastjet->Branch("balance_jets_pT", &balance_jets_pT);
     fastjet->Branch("balance_jets_eta", &balance_jets_eta);
     fastjet->Branch("balance_jets_phi", &balance_jets_phi);
@@ -224,6 +224,8 @@ int main(int argc, char *argv[])
                probe_jet_constituent_pT.push_back(trk.pt());
                probe_jet_constituent_eta.push_back(trk.eta());
                probe_jet_constituent_phi.push_back(trk.phi());
+               probe_jet_constituent_q.push_back(q->at(trk.user_index()));
+               probe_jet_constituent_PID.push_back(pid->at(trk.user_index()));
             }
         }
 
