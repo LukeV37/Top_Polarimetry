@@ -45,6 +45,8 @@ int main(int argc, char *argv[])
     std::vector<int> *fromNu = 0;
     std::vector<int> *fromAntiBottom = 0;
     float top_px, top_py, top_pz, top_e;
+    float top_px_boosted, top_py_boosted, top_pz_boosted, top_e_boosted;
+    float down_px_boosted, down_py_boosted, down_pz_boosted, down_e_boosted;
     float costheta;
     pythia->SetBranchAddress("p_px", &px);
     pythia->SetBranchAddress("p_py", &py);
@@ -62,6 +64,14 @@ int main(int argc, char *argv[])
     pythia->SetBranchAddress("top_py", &top_py);
     pythia->SetBranchAddress("top_pz", &top_pz);
     pythia->SetBranchAddress("top_e", &top_e);
+    pythia->SetBranchAddress("top_px_boosted", &top_px_boosted);
+    pythia->SetBranchAddress("top_py_boosted", &top_py_boosted);
+    pythia->SetBranchAddress("top_pz_boosted", &top_pz_boosted);
+    pythia->SetBranchAddress("top_e_boosted", &top_e_boosted);
+    pythia->SetBranchAddress("down_px_boosted", &down_px_boosted);
+    pythia->SetBranchAddress("down_py_boosted", &down_py_boosted);
+    pythia->SetBranchAddress("down_pz_boosted", &down_pz_boosted);
+    pythia->SetBranchAddress("down_e_boosted", &down_e_boosted);
     pythia->SetBranchAddress("costheta", &costheta);
 
     // Initialize output ROOT file, TTree, and Branches
@@ -109,6 +119,14 @@ int main(int argc, char *argv[])
     fastjet->Branch("truth_top_pT", &truth_top_pT);
     fastjet->Branch("truth_top_eta", &truth_top_eta);
     fastjet->Branch("truth_top_phi", &truth_top_phi);
+    fastjet->Branch("truth_top_px_boosted", &top_px_boosted);
+    fastjet->Branch("truth_top_py_boosted", &top_py_boosted);
+    fastjet->Branch("truth_top_pz_boosted", &top_pz_boosted);
+    fastjet->Branch("truth_top_e_boosted", &top_e_boosted);
+    fastjet->Branch("truth_down_px_boosted", &down_px_boosted);
+    fastjet->Branch("truth_down_py_boosted", &down_py_boosted);
+    fastjet->Branch("truth_down_pz_boosted", &down_pz_boosted);
+    fastjet->Branch("truth_down_e_boosted", &down_e_boosted);
     fastjet->Branch("costheta", &costheta);
 
     int total_event_counter=0;
@@ -117,7 +135,7 @@ int main(int argc, char *argv[])
     int fatjet_cut=0;
     int leptonic_top=0;
 
-    // Loop over entries and determine the truth label
+    // Loop over events
     int nEntries = pythia->GetEntries();
     for (int event=0; event<nEntries; event++){
         total_event_counter++;
@@ -249,6 +267,7 @@ int main(int argc, char *argv[])
         // Fill ROOT file
         fastjet->Fill();
     }
+
     // Print out cutflow
     std::cout << "Total Events: " << total_event_counter << std::endl;
     std::cout << "Isolated Lepton Cut: " << isolated_lepton_cut << std::endl;
