@@ -44,6 +44,8 @@ int main(int argc, char *argv[])
     std::vector<int> *fromLepton = 0;
     std::vector<int> *fromNu = 0;
     std::vector<int> *fromAntiBottom = 0;
+    float top_px, top_py, top_pz, top_e;
+    float costheta;
     pythia->SetBranchAddress("p_px", &px);
     pythia->SetBranchAddress("p_py", &py);
     pythia->SetBranchAddress("p_pz", &pz);
@@ -56,6 +58,11 @@ int main(int argc, char *argv[])
     pythia->SetBranchAddress("p_fromLepton", &fromLepton);
     pythia->SetBranchAddress("p_fromNu", &fromNu);
     pythia->SetBranchAddress("p_fromAntiBottom", &fromAntiBottom);
+    pythia->SetBranchAddress("top_px", &top_px);
+    pythia->SetBranchAddress("top_py", &top_py);
+    pythia->SetBranchAddress("top_pz", &top_pz);
+    pythia->SetBranchAddress("top_e", &top_e);
+    pythia->SetBranchAddress("costheta", &costheta);
 
     // Initialize output ROOT file, TTree, and Branches
     TFile *output = new TFile(TString("../WS_")+TString(dataset_tag)+TString("/dataset_selected_")+TString(dataset_tag)+TString("_")+TString(run_num)+TString(".root"),"recreate");
@@ -79,6 +86,7 @@ int main(int argc, char *argv[])
     std::vector<float> balance_jets_pT;
     std::vector<float> balance_jets_eta;
     std::vector<float> balance_jets_phi;
+    float truth_top_pT, truth_top_eta, truth_top_phi;
 
     fastjet->Branch("lepton_pT", &lepton_pT);
     fastjet->Branch("lepton_eta", &lepton_eta);
@@ -98,6 +106,10 @@ int main(int argc, char *argv[])
     fastjet->Branch("balance_jets_pT", &balance_jets_pT);
     fastjet->Branch("balance_jets_eta", &balance_jets_eta);
     fastjet->Branch("balance_jets_phi", &balance_jets_phi);
+    fastjet->Branch("truth_top_pT", &truth_top_pT);
+    fastjet->Branch("truth_top_eta", &truth_top_eta);
+    fastjet->Branch("truth_top_phi", &truth_top_phi);
+    fastjet->Branch("costheta", &costheta);
 
     int total_event_counter=0;
     int isolated_lepton_cut=0;
@@ -227,6 +239,13 @@ int main(int argc, char *argv[])
             balance_jets_eta.push_back(jet.eta());
             balance_jets_phi.push_back(jet.phi());
         }
+
+        // Store truth top kinematics
+        fastjet::PseudoJet truth_top(top_px, top_py, top_pz, top_e);
+        truth_top_pT = truth_top.pt();
+        truth_top_eta = truth_top.eta();
+        truth_top_phi = truth_top.phi();
+
         // Fill ROOT file
         fastjet->Fill();
     }
