@@ -67,6 +67,8 @@ int main(int argc, char *argv[])
     float top_px, top_py, top_pz, top_e;
     float anti_top_px, anti_top_py, anti_top_pz, anti_top_e;
     float down_px, down_py, down_pz, down_e;
+    float top_px_boosted, top_py_boosted, top_pz_boosted, top_e_boosted;
+    float down_px_boosted, down_py_boosted, down_pz_boosted, down_e_boosted;
     float costheta;
     TLorentzVector p_t, p_tbar, p_d;
     Pythia->Branch("top_px", &top_px);
@@ -81,6 +83,14 @@ int main(int argc, char *argv[])
     Pythia->Branch("down_py", &down_py);
     Pythia->Branch("down_pz", &down_pz);
     Pythia->Branch("down_e", &down_e);
+    Pythia->Branch("top_px_boosted", &top_px_boosted);
+    Pythia->Branch("top_py_boosted", &top_py_boosted);
+    Pythia->Branch("top_pz_boosted", &top_pz_boosted);
+    Pythia->Branch("top_e_boosted", &top_e_boosted);
+    Pythia->Branch("down_px_boosted", &down_px_boosted);
+    Pythia->Branch("down_py_boosted", &down_py_boosted);
+    Pythia->Branch("down_pz_boosted", &down_pz_boosted);
+    Pythia->Branch("down_e_boosted", &down_e_boosted);
     Pythia->Branch("costheta", &costheta);
 
     // Configure Jet parameters
@@ -153,7 +163,7 @@ int main(int argc, char *argv[])
         p_tbar = TLorentzVector(anti_top_px, anti_top_py, anti_top_pz, anti_top_e);
         p_d = TLorentzVector(down_px, down_py, down_pz, down_e);
 
-        costheta = calc_costheta(p_t, p_tbar, p_d);
+        costheta = calc_costheta(p_t, p_tbar, p_d, &top_px_boosted, &top_py_boosted, &top_pz_boosted, &top_e_boosted, &down_px_boosted, &down_py_boosted, &down_pz_boosted, &down_e_boosted);
 
         if (event_no==0){
             std::cout << "top_idx: " << top_idx << std::endl;
