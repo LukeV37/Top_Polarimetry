@@ -93,6 +93,9 @@ int main(int argc, char *argv[])
     std::vector<float> probe_jet_constituent_phi;
     std::vector<int> probe_jet_constituent_q;
     std::vector<int> probe_jet_constituent_PID;
+    std::vector<int> probe_jet_constituent_fromDown;
+    std::vector<int> probe_jet_constituent_fromUp;
+    std::vector<int> probe_jet_constituent_fromBottom;
     std::vector<float> balance_jets_pT;
     std::vector<float> balance_jets_eta;
     std::vector<float> balance_jets_phi;
@@ -113,6 +116,9 @@ int main(int argc, char *argv[])
     fastjet->Branch("probe_jet_constituent_phi", &probe_jet_constituent_phi);
     fastjet->Branch("probe_jet_constituent_q", &probe_jet_constituent_q);
     fastjet->Branch("probe_jet_constituent_PID", &probe_jet_constituent_PID);
+    fastjet->Branch("probe_jet_constituent_fromDown", &probe_jet_constituent_fromDown);
+    fastjet->Branch("probe_jet_constituent_fromUp", &probe_jet_constituent_fromUp);
+    fastjet->Branch("probe_jet_constituent_fromBottom", &probe_jet_constituent_fromBottom);
     fastjet->Branch("balance_jets_pT", &balance_jets_pT);
     fastjet->Branch("balance_jets_eta", &balance_jets_eta);
     fastjet->Branch("balance_jets_phi", &balance_jets_phi);
@@ -146,6 +152,7 @@ int main(int argc, char *argv[])
 
         // Clear output vectors
         probe_jet_constituent_pT.clear(); probe_jet_constituent_eta.clear(); probe_jet_constituent_phi.clear(); probe_jet_constituent_q.clear(); probe_jet_constituent_PID.clear();
+        probe_jet_constituent_fromDown.clear(); probe_jet_constituent_fromUp.clear(); probe_jet_constituent_fromBottom.clear();
         balance_jets_pT.clear(); balance_jets_eta.clear(); balance_jets_phi.clear();
         
         // Store particles in fastjet::PseudoJet objects and set the index
@@ -226,6 +233,9 @@ int main(int argc, char *argv[])
                probe_jet_constituent_phi.push_back(trk.phi());
                probe_jet_constituent_q.push_back(q->at(trk.user_index()));
                probe_jet_constituent_PID.push_back(pid->at(trk.user_index()));
+               probe_jet_constituent_fromDown.push_back(fromDown->at(trk.user_index()));
+               probe_jet_constituent_fromUp.push_back(fromUp->at(trk.user_index()));
+               probe_jet_constituent_fromBottom.push_back(fromBottom->at(trk.user_index()));
             }
         }
 
