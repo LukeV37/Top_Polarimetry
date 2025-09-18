@@ -29,4 +29,4 @@ for file in file_list:
 
 concat_dataset = ConcatDataset(dataset_list)
 
-torch.save(concat_dataset, "dataset"+tag+"_combined.pt")
+torch.save(concat_dataset, "dataset_"+tag+"_combined.pt")
