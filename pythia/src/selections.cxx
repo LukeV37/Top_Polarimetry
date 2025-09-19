@@ -88,6 +88,7 @@ int main(int argc, char *argv[])
     float probe_jet_pT;
     float probe_jet_eta;
     float probe_jet_phi;
+    float probe_jet_mass;
     std::vector<float> probe_jet_constituent_pT;
     std::vector<float> probe_jet_constituent_eta;
     std::vector<float> probe_jet_constituent_phi;
@@ -111,6 +112,7 @@ int main(int argc, char *argv[])
     fastjet->Branch("probe_jet_pT", &probe_jet_pT);
     fastjet->Branch("probe_jet_eta", &probe_jet_eta);
     fastjet->Branch("probe_jet_phi", &probe_jet_phi);
+    fastjet->Branch("probe_jet_mass", &probe_jet_mass);
     fastjet->Branch("probe_jet_constituent_pT", &probe_jet_constituent_pT);
     fastjet->Branch("probe_jet_constituent_eta", &probe_jet_constituent_eta);
     fastjet->Branch("probe_jet_constituent_phi", &probe_jet_constituent_phi);
@@ -199,7 +201,7 @@ int main(int argc, char *argv[])
         std::vector<fastjet::PseudoJet> particles_no_lepton = remove_particles_from_clustering(fastjet_particles, lepton_nu_idx);
 
         // Cluster particles and pick up hardest largeR jet
-        float R_large = 1.5;
+        float R_large = 2.0;
         float pTmin_jet_large = 250; // GeV
         fastjet::JetDefinition jetDef_large = fastjet::JetDefinition(fastjet::cambridge_algorithm, R_large, fastjet::E_scheme, fastjet::Best);
         fastjet::ClusterSequence clustSeq_large(particles_no_lepton, jetDef_large);
@@ -216,6 +218,7 @@ int main(int argc, char *argv[])
         probe_jet_pT  = hardest_jet.pt();
         probe_jet_eta = hardest_jet.eta();
         probe_jet_phi = hardest_jet.phi();
+        probe_jet_mass= hardest_jet.m();
 
         // Skip event if jet has |eta|>3
         if (std::abs(probe_jet_eta)>3){
@@ -226,7 +229,7 @@ int main(int argc, char *argv[])
         // Store jet constituents
         std::vector<int> hardest_jet_constituents;
         for (auto trk:hardest_jet.constituents()){
-            if (trk.pt() > 0.4 and std::abs(trk.eta()) < 4.5){
+            //if (trk.pt() > 0.4 and std::abs(trk.eta()) < 4.5){
                hardest_jet_constituents.push_back(trk.user_index());
                probe_jet_constituent_pT.push_back(trk.pt());
                probe_jet_constituent_eta.push_back(trk.eta());
@@ -236,7 +239,7 @@ int main(int argc, char *argv[])
                probe_jet_constituent_fromDown.push_back(fromDown->at(trk.user_index()));
                probe_jet_constituent_fromUp.push_back(fromUp->at(trk.user_index()));
                probe_jet_constituent_fromBottom.push_back(fromBottom->at(trk.user_index()));
-            }
+            //}
         }
 
         // Remove the constituents from clustering
