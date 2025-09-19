@@ -50,10 +50,10 @@ def load_file(file):
         lepton_q = f["lepton_q"].array()
         nu_MET = f["nu_MET"].array()
         nu_phi = f["nu_phi"].array()
-        nu_phi = f["nu_phi"].array()
         probe_jet_pT = f["probe_jet_pT"].array()
         probe_jet_eta = f["probe_jet_eta"].array()
         probe_jet_phi = f["probe_jet_phi"].array()
+        probe_jet_mass = f["probe_jet_mass"].array()
         probe_jet_constituent_pT= f["probe_jet_constituent_pT"].array()
         probe_jet_constituent_eta= f["probe_jet_constituent_eta"].array()
         probe_jet_constituent_phi= f["probe_jet_constituent_phi"].array()
@@ -82,19 +82,19 @@ def load_file(file):
     # Combine features into single tensor
     lepton_feats = combine_feats([lepton_pT, lepton_eta, lepton_phi, lepton_q], axis=1)
     nu_feats = combine_feats([nu_MET, nu_phi], axis=1)
-    probe_jet_feats = combine_feats([probe_jet_pT, probe_jet_eta, probe_jet_phi], axis=1)
+    probe_jet_feats = combine_feats([probe_jet_pT, probe_jet_eta, probe_jet_phi, probe_jet_mass], axis=1)
 
     # Combine feats for probe jet constituents: sort by pT, clip to max num, combine feats
-    max_constituent_num=100
+    max_constituent_num=200
     probe_jet_constituent_var_list = ["pT", "eta", "phi", "q", "PID", "fromDown", "fromUp", "fromBottom"]
     probe_jet_constituent_dict = {"pT": probe_jet_constituent_pT, "eta": probe_jet_constituent_eta, "phi": probe_jet_constituent_phi, "q": probe_jet_constituent_q, "PID": probe_jet_constituent_PID,
                                   "fromDown": probe_jet_constituent_fromDown, "fromUp": probe_jet_constituent_fromUp, "fromBottom": probe_jet_constituent_fromBottom}
     sorted_probe_jet_constituent_dict = sort_by_pT(probe_jet_constituent_dict)
     clipped_probe_jet_constituent_dict = clip_to_num(sorted_probe_jet_constituent_dict, max_constituent_num)
-    probe_jet_constituent_feats = combine_feats([clipped_probe_jet_constituent_dict["pT"], clipped_probe_jet_constituent_dict["eta"], clipped_probe_jet_constituent_dict["phi"], clipped_probe_jet_constituent_dict["q"]], axis=2)
+    probe_jet_constituent_feats = combine_feats([clipped_probe_jet_constituent_dict["pT"], clipped_probe_jet_constituent_dict["eta"], clipped_probe_jet_constituent_dict["phi"], clipped_probe_jet_constituent_dict["q"], clipped_probe_jet_constituent_dict["PID"]], axis=2)
 
     # Combine feats for balance jets: sort by pT, clip to max num, combine feats
-    max_balance_jet_num=20
+    max_balance_jet_num=10
     balance_jet_var_list = ["pT", "eta", "phi"]
     balance_jet_dict = {"pT": balance_jets_pT, "eta": balance_jets_eta, "phi": balance_jets_phi}
     sorted_balanced_jet_dict = sort_by_pT(balance_jet_dict)
@@ -128,4 +128,4 @@ class CustomDataset(Dataset):
         return len(self.lepton)
 
 dset = CustomDataset(file)
-torch.save(dset, "dataset_"+tag+"_"+str(file_num)+".pt")
+torch.save(dset, "data/dataset_"+tag+"_"+str(file_num)+".pt")
