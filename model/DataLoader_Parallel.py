@@ -103,7 +103,7 @@ def load_file(file):
 
     # Combine labels into single tensor
     truth_down_px_norm, truth_down_py_norm, truth_down_pz_norm = get_norm(truth_down_px_boosted, truth_down_py_boosted, truth_down_pz_boosted)
-    truth_labels = combine_feats([truth_top_px_boosted, truth_top_py_boosted, truth_top_pz_boosted, truth_top_e_boosted, truth_down_px_norm, truth_down_py_norm, truth_down_pz_norm, truth_down_e_boosted, truth_costheta], axis=1)
+    truth_labels = combine_feats([truth_top_px_boosted, truth_top_py_boosted, truth_top_pz_boosted, truth_top_e_boosted, truth_down_px_norm, truth_down_py_norm, truth_down_pz_norm, truth_costheta], axis=1)
     track_labels = combine_feats([clipped_probe_jet_constituent_dict["fromDown"], clipped_probe_jet_constituent_dict["fromUp"], clipped_probe_jet_constituent_dict["fromBottom"]], axis=2)
     
     return lepton_feats, nu_feats, probe_jet_feats, probe_jet_constituent_feats, balance_jets_feats, truth_labels, track_labels
