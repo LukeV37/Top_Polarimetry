@@ -34,9 +34,12 @@ class CustomDataset(Dataset):
 
 batch_size=128
 
-train_dataset = torch.load(dir_dataset+"/train_dataset.pt", weights_only=False)
-val_dataset = torch.load(dir_dataset+"/val_dataset.pt", weights_only=False)
-test_dataset = torch.load(dir_dataset+"/test_dataset.pt", weights_only=False)
+dset = torch.load(dir_dataset+"/dataset_combined.pt", weights_only=False)
+
+generator = torch.Generator().manual_seed(42)
+
+train_dataset, test_dataset = torch.utils.data.random_split(dset, [0.75, 0.25], generator=generator)
+val_dataset, test_dataset = torch.utils.data.random_split(test_dataset, [0.2, 0.8], generator=generator)
 
 train_loader = DataLoader(train_dataset, batch_size=batch_size)
 val_loader = DataLoader(val_dataset, batch_size=batch_size)

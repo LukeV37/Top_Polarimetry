@@ -37,9 +37,4 @@ for file in file_list:
 
 concat_dataset = ConcatDataset(dataset_list)
 
-train_dataset, test_dataset = torch.utils.data.random_split(concat_dataset, [0.75, 0.25])
-val_dataset, test_dataset = torch.utils.data.random_split(test_dataset, [0.2, 0.8])
-
-torch.save(train_dataset, dataset_dir+"/train_dataset.pt")
-torch.save(val_dataset, dataset_dir+"/val_dataset.pt")
-torch.save(test_dataset, dataset_dir+"/test_dataset.pt")
+torch.save(concat_dataset, dataset_dir+"/dataset_combined.pt")
