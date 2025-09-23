@@ -12,8 +12,9 @@ from new_model import *
 
 tag = str(sys.argv[1])
 epochs = int(sys.argv[2])
-dir_dataset = str(sys.argv[3])
-dir_training = str(sys.argv[4])
+embed_dim = int(sys.argv[3])
+dir_dataset = str(sys.argv[4])
+dir_training = str(sys.argv[5])
 
 class CustomDataset(Dataset):
     def __init__(self):
@@ -42,7 +43,7 @@ print("GPU Available: ", torch.cuda.is_available())
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
 
-model = Model2(64,4).to(device)
+model = Model2(embed_dim,4).to(device)
 
 optimizer = optim.AdamW(model.parameters(), lr=0.0001)
 
