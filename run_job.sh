@@ -76,6 +76,7 @@ if [ "$bypass_train" = false ]; then
   start=`date +%s`
   cd model
   mkdir -p $dir_training
+  mkdir -p "$dir_training/models"
   python -u New_Training.py $tag $epochs $embed_dim $dir_datasets $dir_training | tee "${dir_training}/training.log"
   cd $WORKING_DIR
   end=`date +%s`
