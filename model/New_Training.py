@@ -34,9 +34,12 @@ class CustomDataset(Dataset):
 
 batch_size=128
 
-dset = torch.load(dir_dataset+"/dataset_"+tag+"_combined.pt", weights_only=False)
-train_dataset, test_dataset = torch.utils.data.random_split(dset, [0.8, 0.2])
+train_dataset = torch.load(dir_dataset+"/train_dataset.pt", weights_only=False)
+val_dataset = torch.load(dir_dataset+"/val_dataset.pt", weights_only=False)
+test_dataset = torch.load(dir_dataset+"/test_dataset.pt", weights_only=False)
+
 train_loader = DataLoader(train_dataset, batch_size=batch_size)
+val_loader = DataLoader(val_dataset, batch_size=batch_size)
 test_loader = DataLoader(test_dataset, batch_size=batch_size)
 
 print("GPU Available: ", torch.cuda.is_available())
@@ -110,10 +113,14 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
 
         if e%1==0:
             print('Epoch:',e+1,'\tTrain Loss:',round(cumulative_loss_train,6),'\tVal Loss:',round(cumulative_loss_val,6))
+
+        torch.save(model,dir_training+"/models/model_Epoch_"+str(e+1)+".torch")
             
     return np.array(combined_history)
 
-history = train(model, optimizer, train_loader, test_loader, epochs=epochs)
+history = train(model, optimizer, train_loader, val_loader, epochs=epochs)
+
+torch.save(model,dir_training+"/model_final.torch")
 
 plt.figure()
 plt.plot(history[:,0], label="Train")
@@ -163,11 +170,18 @@ do_PlotDirect=False
 
 def validate_predictions(true, pred, var_names):
     num_feats = len(var_names)
-    for i in range(num_feats):
-        if np.min(true[:,i])>0:
-            var_range = (0, np.mean(true[:,i])+5*np.std(true[:,i]))
-        else:
-            var_range = (np.mean(true[:,i])-5*np.std(true[:,i]), np.mean(true[:,i])+5*np.std(true[:,i]))
+    ranges_dict = {"top_px": (-1000,1000),
+                   "top_py": (-1000,1000),
+                   "top_pz": (-1000,1000),
+                   "top_e" : (0,1500),
+                   "down_px": (-1.2,1.2),
+                   "down_py": (-1.2,1.2),
+                   "down_pz": (-1.2,1.2),
+                   "costheta": (-1.2,1.2)}
+
+    for i ,var in enumerate(var_names):
+        var_range = ranges_dict[var]
+
         plt.figure()
         plt.hist(np.ravel(true[:,i]),histtype='step',color='r',label='True Distribution',bins=50,range=var_range)
         plt.hist(np.ravel(pred[:,i]),histtype='step',color='b',label='Predicted Distribution',bins=50,range=var_range)
