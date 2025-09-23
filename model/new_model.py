@@ -60,7 +60,8 @@ class Model2(nn.Module):
         # Transformer Stack
         self.stack1 = Stack(self.embed_dim, self.num_heads)
         self.stack2 = Stack(self.embed_dim, self.num_heads)
-        self.stack3 = Stack(self.embed_dim, self.num_heads)
+        self.stackTop = Stack(self.embed_dim, self.num_heads)
+        self.stackDown= Stack(self.embed_dim, self.num_heads)
         
         # Kinematics Regression
         self.top_regression_input = nn.Linear(self.embed_dim, self.embed_dim)
@@ -93,19 +94,22 @@ class Model2(nn.Module):
         # Transformer Stack
         probe_jet_embedding, probe_jet_constituent_embedding, event_embedding = self.stack1(probe_jet_embedding,probe_jet_constituent_embedding,event_embedding)
         probe_jet_embedding, probe_jet_constituent_embedding, event_embedding = self.stack2(probe_jet_embedding,probe_jet_constituent_embedding,event_embedding)
-        #probe_jet_embedding, probe_jet_constituent_embedding, event_embedding = self.stack3(probe_jet_embedding,probe_jet_constituent_embedding,event_embedding)
+
+        probe_jet_embedding_top, probe_jet_constituent_embedding_top, event_embedding_top = self.stackTop(probe_jet_embedding,probe_jet_constituent_embedding,event_embedding)
+        probe_jet_embedding_down, probe_jet_constituent_embedding_down, event_embedding_down = self.stackTop(probe_jet_embedding,probe_jet_constituent_embedding,event_embedding)
         
         # Track Classificiation
         track_output = self.track_classification(probe_jet_constituent_embedding)
         
-        probe_jet_embedding = torch.squeeze(probe_jet_embedding,1)
+        probe_jet_embedding_top  = torch.squeeze(probe_jet_embedding_top,1)
+        probe_jet_embedding_down = torch.squeeze(probe_jet_embedding_down,1)
         
         # Get Top output
-        top_kinematics = F.gelu(self.top_regression_input(probe_jet_embedding))
+        top_kinematics = F.gelu(self.top_regression_input(probe_jet_embedding_top))
         top_kinematics = self.top_regression(top_kinematics)
         
         # Get Down output
-        down_kinematics = F.gelu(self.down_regression_input(probe_jet_embedding))
+        down_kinematics = F.gelu(self.down_regression_input(probe_jet_embedding_down))
         down_kinematics = F.tanh(self.down_regression(down_kinematics))
         
         # Direct Regression output
