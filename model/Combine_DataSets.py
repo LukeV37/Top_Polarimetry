@@ -5,8 +5,9 @@ import sys
 
 tag = str(sys.argv[1])
 num_files = int(sys.argv[2])
+dataset_dir = str(sys.argv[3])
 
-file_list = ['dataset_'+tag+'_'+str(i)+'.pt' for i in range(num_files)]
+file_list = [dataset_dir+'/run_'+str(i)+'/dataset.pt' for i in range(num_files)]
 
 class CustomDataset(Dataset):
     def __init__(self):
@@ -29,4 +30,4 @@ for file in file_list:
 
 concat_dataset = ConcatDataset(dataset_list)
 
-torch.save(concat_dataset, "dataset_"+tag+"_combined.pt")
+torch.save(concat_dataset, dataset_dir+"/dataset_"+tag+"_combined.pt")

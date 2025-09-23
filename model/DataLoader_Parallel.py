@@ -9,6 +9,7 @@ import sys
 
 tag = str(sys.argv[1])
 file_num = int(sys.argv[2])
+dataset_dir = str(sys.argv[3])
 
 file = '../pythia/WS_'+tag+'/dataset_selected_'+tag+'_'+str(file_num)+'.root:fastjet'
 
@@ -71,7 +72,7 @@ def load_file(file):
         truth_down_px_boosted = f["truth_down_px_boosted"].array()
         truth_down_py_boosted = f["truth_down_py_boosted"].array()
         truth_down_pz_boosted = f["truth_down_pz_boosted"].array()
-        truth_down_e_boosted = f["truth_down_e_boosted"].array()
+        #truth_down_e_boosted = f["truth_down_e_boosted"].array()
         truth_costheta = f["costheta"].array()
 
         # Track Labels
@@ -103,29 +104,33 @@ def load_file(file):
 
     # Combine labels into single tensor
     truth_down_px_norm, truth_down_py_norm, truth_down_pz_norm = get_norm(truth_down_px_boosted, truth_down_py_boosted, truth_down_pz_boosted)
-    truth_labels = combine_feats([truth_top_px_boosted, truth_top_py_boosted, truth_top_pz_boosted, truth_top_e_boosted, truth_down_px_norm, truth_down_py_norm, truth_down_pz_norm, truth_costheta], axis=1)
+    top_labels = combine_feats([truth_top_px_boosted, truth_top_py_boosted, truth_top_pz_boosted, truth_top_e_boosted], axis=1)
+    down_labels = combine_feats([truth_down_px_norm, truth_down_py_norm, truth_down_pz_norm], axis=1)
+    direct_labels = combine_feats([truth_costheta], axis=1)
     track_labels = combine_feats([clipped_probe_jet_constituent_dict["fromDown"], clipped_probe_jet_constituent_dict["fromUp"], clipped_probe_jet_constituent_dict["fromBottom"]], axis=2)
     
-    return lepton_feats, nu_feats, probe_jet_feats, probe_jet_constituent_feats, balance_jets_feats, truth_labels, track_labels
+    return lepton_feats, nu_feats, probe_jet_feats, probe_jet_constituent_feats, balance_jets_feats, top_labels, down_labels, direct_labels, track_labels
 
 class CustomDataset(Dataset):
     def __init__(self, file):
 
-        lepton_feats, nu_feats, probe_jet_feats, probe_jet_constituent_feats, balance_jets_feats, truth_labels, track_labels = load_file(file)
+        lepton_feats, nu_feats, probe_jet_feats, probe_jet_constituent_feats, balance_jets_feats, top_labels, down_labels, direct_labels, track_labels = load_file(file)
 
         self.lepton = lepton_feats
         self.nu = nu_feats
         self.probe_jet = probe_jet_feats
         self.probe_jet_constituents = probe_jet_constituent_feats
         self.balance_jets = balance_jets_feats
-        self.labels = truth_labels
+        self.top_labels = top_labels
+        self.down_labels = down_labels
+        self.direct_labels = direct_labels
         self.track_labels = track_labels
     
     def __getitem__(self, idx):
-        return self.lepton[idx], self.nu[idx], self.probe_jet[idx], self.probe_jet_constituents[idx], self.balance_jets[idx], self.labels[idx], self.track_labels[idx]
+        return self.lepton[idx], self.nu[idx], self.probe_jet[idx], self.probe_jet_constituents[idx], self.balance_jets[idx], self.top_labels[idx], self.down_labels[idx], self.direct_labels[idx], self.track_labels[idx]
 
     def __len__(self):
         return len(self.lepton)
 
 dset = CustomDataset(file)
-torch.save(dset, "data/dataset_"+tag+"_"+str(file_num)+".pt")
+torch.save(dset, dataset_dir+"/run_"+str(file_num)+"/dataset.pt")
