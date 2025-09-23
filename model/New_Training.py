@@ -177,10 +177,10 @@ def validate_predictions(true, pred, var_names):
                    "top_py": (-1000,1000),
                    "top_pz": (-1000,1000),
                    "top_e" : (0,1500),
-                   "down_px": (-1.2,1.2),
-                   "down_py": (-1.2,1.2),
-                   "down_pz": (-1.2,1.2),
-                   "costheta": (-1.2,1.2)}
+                   "down_px": (-1.1,1.1),
+                   "down_py": (-1.1,1.1),
+                   "down_pz": (-1.1,1.1),
+                   "costheta": (-1.1,1.1)}
 
     for i ,var in enumerate(var_names):
         var_range = ranges_dict[var]
