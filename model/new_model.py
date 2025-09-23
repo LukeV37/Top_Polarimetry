@@ -60,21 +60,21 @@ class Model2(nn.Module):
         # Transformer Stack
         self.stack1 = Stack(self.embed_dim, self.num_heads)
         self.stack2 = Stack(self.embed_dim, self.num_heads)
-        self.stackTop = Stack(self.embed_dim, self.num_heads)
+        #self.stackTop = Stack(self.embed_dim, self.num_heads)
         self.stackDown= Stack(self.embed_dim, self.num_heads)
         
         # Kinematics Regression
-        self.top_regression_input = nn.Linear(self.embed_dim, self.embed_dim)
-        self.top_regression = nn.Linear(self.embed_dim, 4)
+        #self.top_regression_input = nn.Linear(self.embed_dim, self.embed_dim)
+        #self.top_regression = nn.Linear(self.embed_dim, 4)
         self.down_regression_input = nn.Linear(self.embed_dim, self.embed_dim)
         self.down_regression = nn.Linear(self.embed_dim, 3)
 
         # Direct Regression Task
-        self.direct_input = nn.Linear(7, self.embed_dim)
-        self.direct_regression = nn.Linear(self.embed_dim, 1)
+        #self.direct_input = nn.Linear(7, self.embed_dim)
+        #self.direct_regression = nn.Linear(self.embed_dim, 1)
         
         # Track Classification
-        self.track_classification = nn.Linear(self.embed_dim, 3)
+        #self.track_classification = nn.Linear(self.embed_dim, 3)
 
     def forward(self, lepton, MET, probe_jet, probe_jet_constituent, small_jet):
         
@@ -95,29 +95,30 @@ class Model2(nn.Module):
         probe_jet_embedding, probe_jet_constituent_embedding, event_embedding = self.stack1(probe_jet_embedding,probe_jet_constituent_embedding,event_embedding)
         probe_jet_embedding, probe_jet_constituent_embedding, event_embedding = self.stack2(probe_jet_embedding,probe_jet_constituent_embedding,event_embedding)
 
-        probe_jet_embedding_top, probe_jet_constituent_embedding_top, event_embedding_top = self.stackTop(probe_jet_embedding,probe_jet_constituent_embedding,event_embedding)
-        probe_jet_embedding_down, probe_jet_constituent_embedding_down, event_embedding_down = self.stackTop(probe_jet_embedding,probe_jet_constituent_embedding,event_embedding)
+        #probe_jet_embedding_top, probe_jet_constituent_embedding_top, event_embedding_top = self.stackTop(probe_jet_embedding,probe_jet_constituent_embedding,event_embedding)
+        probe_jet_embedding_down, probe_jet_constituent_embedding_down, event_embedding_down = self.stackDown(probe_jet_embedding,probe_jet_constituent_embedding,event_embedding)
         
         # Track Classificiation
-        track_output = self.track_classification(probe_jet_constituent_embedding)
+        #track_output = self.track_classification(probe_jet_constituent_embedding)
         
-        probe_jet_embedding_top  = torch.squeeze(probe_jet_embedding_top,1)
+        #probe_jet_embedding_top  = torch.squeeze(probe_jet_embedding_top,1)
         probe_jet_embedding_down = torch.squeeze(probe_jet_embedding_down,1)
         
         # Get Top output
-        top_kinematics = F.gelu(self.top_regression_input(probe_jet_embedding_top))
-        top_kinematics = self.top_regression(top_kinematics)
+        #top_kinematics = F.gelu(self.top_regression_input(probe_jet_embedding_top))
+        #top_kinematics = self.top_regression(top_kinematics)
         
         # Get Down output
         down_kinematics = F.gelu(self.down_regression_input(probe_jet_embedding_down))
         down_kinematics = F.tanh(self.down_regression(down_kinematics))
         
         # Direct Regression output
-        direct_embedding = torch.cat([top_kinematics, down_kinematics], axis=1)
-        direct_embedding = F.gelu(self.direct_input(direct_embedding))
-        costheta = self.direct_regression(direct_embedding)
+        #direct_embedding = torch.cat([top_kinematics, down_kinematics], axis=1)
+        #direct_embedding = F.gelu(self.direct_input(direct_embedding))
+        #costheta = self.direct_regression(direct_embedding)
 
-        return top_kinematics, down_kinematics, costheta, track_output
+        #return top_kinematics, down_kinematics, costheta, track_output
+        return down_kinematics
 
 class Model(nn.Module):  
     def __init__(self, embed_dim, num_heads):
