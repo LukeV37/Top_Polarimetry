@@ -192,8 +192,6 @@ int main(int argc, char *argv[])
 
             //std::cout << j << "\t" << p.id() << "\t" << p.status() << "\t" << p.mother1() << "\t" << p.mother2() << "\t" << p.daughter1() << "\t" << p.daughter2() << std::endl;
 
-            particle_num++; // Keep track of particle num
-            
             // Do not consider intermediate particles for clustering
             if (not p.isFinal()) continue;
             // Do not consider neutrinos in clustering
@@ -201,7 +199,7 @@ int main(int argc, char *argv[])
 
             // Convert particles to PseduoJet object, set the user idx, and append to the list of fastjet particles
             fastjet::PseudoJet fj(p.px(), p.py(), p.pz(), p.e());
-            fj.set_user_index(particle_num-1); // Subtract 1 to become 0 based
+            fj.set_user_index(particle_num++); // 0 based
             fastjet_particles.push_back(fj);
 
             // Fill trk vector with all fastjet candidates
