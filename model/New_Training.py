@@ -49,7 +49,7 @@ print("GPU Available: ", torch.cuda.is_available())
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
 
-model = Model2(embed_dim,4).to(device)
+model = Model2(embed_dim,num_heads=4,num_labels=4).to(device)
 
 optimizer = optim.AdamW(model.parameters(), lr=0.0001)
 
@@ -77,10 +77,10 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
             optimizer.zero_grad()
             
             #top_pred, down_pred, direct_pred, trk_output = model(lepton.to(device), MET.to(device), probe_jet.to(device), constituents.to(device), small_jet.to(device))
-            down_pred = model(lepton.to(device), MET.to(device), probe_jet.to(device), constituents.to(device), small_jet.to(device))
+            top_pred = model(lepton.to(device), MET.to(device), probe_jet.to(device), constituents.to(device), small_jet.to(device))
                         
-            #top_loss      = MSE_loss_fn(top_pred, top_labels.to(device))
-            down_loss     = MSE_loss_fn(down_pred, down_labels.to(device))
+            top_loss      = MSE_loss_fn(top_pred, top_labels.to(device))
+            #down_loss     = MSE_loss_fn(down_pred, down_labels.to(device))
             #costheta_loss = MSE_loss_fn(direct_pred, direct_labels.to(device))
             #track_loss    = CCE_loss_fn(trk_output, track_labels.to(device))
 
@@ -89,7 +89,7 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
             gamma = 0
             delta = 0
             #loss  = alpha*top_loss + beta*down_loss + gamma*costheta_loss + delta*track_loss
-            loss  = down_loss
+            loss  = top_loss
 
             loss.backward()
             optimizer.step()
@@ -103,15 +103,15 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
         num_val = len(val_loader)
         for lepton, MET, probe_jet, constituents, small_jet, top_labels, down_labels, direct_labels, track_labels in val_loader:
             #top_pred, down_pred, direct_pred, trk_output = model(lepton.to(device), MET.to(device), probe_jet.to(device), constituents.to(device), small_jet.to(device))
-            down_pred = model(lepton.to(device), MET.to(device), probe_jet.to(device), constituents.to(device), small_jet.to(device))
+            top_pred = model(lepton.to(device), MET.to(device), probe_jet.to(device), constituents.to(device), small_jet.to(device))
 
-            #top_loss      = MSE_loss_fn(top_pred, top_labels.to(device))
-            down_loss     = MSE_loss_fn(down_pred, down_labels.to(device))
+            top_loss      = MSE_loss_fn(top_pred, top_labels.to(device))
+            #down_loss     = MSE_loss_fn(down_pred, down_labels.to(device))
             #costheta_loss = MSE_loss_fn(direct_pred, direct_labels.to(device))
             #track_loss    = CCE_loss_fn(trk_output, track_labels.to(device))
 
             #loss  = alpha*top_loss + beta*down_loss + gamma*costheta_loss + delta*track_loss
-            loss  = down_loss
+            loss  = top_loss
 
             cumulative_loss_val+=loss.detach().cpu().numpy().mean()
         
@@ -162,27 +162,27 @@ true_costheta = np.array([]).reshape(0,direct_feats)
 
 for lepton, MET, probe_jet, constituents, small_jet, top_labels, down_labels, direct_labels, track_labels in test_loader:
     #top_pred, down_pred, direct_pred, trk_output = model(lepton.to(device), MET.to(device), probe_jet.to(device), constituents.to(device), small_jet.to(device))
-    down_pred = model(lepton.to(device), MET.to(device), probe_jet.to(device), constituents.to(device), small_jet.to(device))
+    top_pred = model(lepton.to(device), MET.to(device), probe_jet.to(device), constituents.to(device), small_jet.to(device))
 
-    #top_loss      = MSE_loss_fn(top_pred, top_labels.to(device))
-    down_loss     = MSE_loss_fn(down_pred, down_labels.to(device))
+    top_loss      = MSE_loss_fn(top_pred, top_labels.to(device))
+    #down_loss     = MSE_loss_fn(down_pred, down_labels.to(device))
     #costheta_loss = MSE_loss_fn(direct_pred, direct_labels.to(device))
     #track_loss    = CCE_loss_fn(trk_output, track_labels.to(device))
 
     #loss  = alpha*top_loss + beta*down_loss + gamma*costheta_loss + delta*track_loss
-    loss  = down_loss
+    loss  = top_loss
     
-    #pred_top = np.vstack((pred_top,top_pred.detach().cpu().numpy()))
-    #true_top = np.vstack((true_top,top_labels.detach().cpu().numpy()))
+    pred_top = np.vstack((pred_top,top_pred.detach().cpu().numpy()))
+    true_top = np.vstack((true_top,top_labels.detach().cpu().numpy()))
     
-    pred_down = np.vstack((pred_down,down_pred.detach().cpu().numpy()))
-    true_down = np.vstack((true_down,down_labels.detach().cpu().numpy()))
+    #pred_down = np.vstack((pred_down,down_pred.detach().cpu().numpy()))
+    #true_down = np.vstack((true_down,down_labels.detach().cpu().numpy()))
     
     #pred_costheta = np.vstack((pred_costheta,direct_pred.detach().cpu().numpy()))
     #true_costheta = np.vstack((true_costheta,direct_labels.detach().cpu().numpy()))
 
-do_PlotTop=False
-do_PlotDown=True
+do_PlotTop=True
+do_PlotDown=False
 do_PlotDirect=False
 
 def validate_predictions(true, pred, var_names):
