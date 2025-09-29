@@ -44,31 +44,37 @@ class Stack(nn.Module):
         return jet_embedding, jet_trk_embedding, trk_embedding
 
 class Model(nn.Module):
-    def __init__(self, embed_dim, num_heads, num_labels, analysis_type):
+    def __init__(self, embed_dim, num_heads):
         super(Model, self).__init__()
         
         self.embed_dim = embed_dim
         self.num_heads = num_heads
-        self.num_labels = num_labels
-        self.analysis_type = analysis_type
         
         # Initiliazer
         self.lepton_initializer = nn.Linear(4, self.embed_dim)
         self.MET_initializer = nn.Linear(2, self.embed_dim)
         self.probe_jet_initializer = nn.Linear(4, self.embed_dim)
-        self.probe_jet_constituent_initializer = nn.Linear(5, self.embed_dim)
+        self.probe_jet_constituent_initializer = nn.Linear(4, self.embed_dim)
         self.small_jet_initializer = nn.Linear(3, self.embed_dim)
            
         # Transformer Stack
         self.stack1 = Stack(self.embed_dim, self.num_heads)
         self.stack2 = Stack(self.embed_dim, self.num_heads)
-        self.stack3 = Stack(self.embed_dim, self.num_heads)
+        self.stackTop = Stack(self.embed_dim, self.num_heads)
+        self.stackDown = Stack(self.embed_dim, self.num_heads)
+
+        # Track Classification
+        self.track_classification = nn.Linear(self.embed_dim, 3)
         
         # Kinematics Regression
         self.top_regression_input = nn.Linear(self.embed_dim, self.embed_dim)
         self.top_regression = nn.Linear(self.embed_dim, 4)
         self.down_regression_input = nn.Linear(self.embed_dim, self.embed_dim)
-        self.down_regression = nn.Linear(self.embed_dim, self.num_labels)
+        self.down_regression = nn.Linear(self.embed_dim, 3)
+
+        # Direct regression
+        self.direct_input = nn.Linear(7, self.embed_dim)
+        self.direct_output = nn.Linear(self.embed_dim, 1)
 
         # Track Classification
         #self.track_classification = nn.Linear(self.embed_dim, 3)
@@ -85,7 +91,7 @@ class Model(nn.Module):
         # Combine objects into single event tensor
         event_embedding = torch.cat([probe_jet_embedding, probe_jet_constituent_embedding, lepton_embedding, MET_embedding, small_jet_embedding], axis=1)
         
-        # Transformer Stack
+        # Transformer Encoder Stack
         probe_jet_embedding_NEW, probe_jet_constituent_embedding_NEW, event_embedding_NEW = self.stack1(probe_jet_embedding,probe_jet_constituent_embedding,event_embedding)
         probe_jet_embedding = probe_jet_embedding + probe_jet_embedding_NEW
         probe_jet_constituent_embedding = probe_jet_constituent_embedding + probe_jet_constituent_embedding_NEW
@@ -96,25 +102,32 @@ class Model(nn.Module):
         probe_jet_constituent_embedding = probe_jet_constituent_embedding + probe_jet_constituent_embedding_NEW
         event_embedding = event_embedding + event_embedding_NEW
 
-        probe_jet_embedding_NEW, probe_jet_constituent_embedding_NEW, event_embedding_NEW = self.stack3(probe_jet_embedding,probe_jet_constituent_embedding,event_embedding)
-        probe_jet_embedding = probe_jet_embedding + probe_jet_embedding_NEW
-        probe_jet_constituent_embedding = probe_jet_constituent_embedding + probe_jet_constituent_embedding_NEW
-        event_embedding = event_embedding + event_embedding_NEW
-
         # Track Classificiation
-        #track_output = self.track_classification(probe_jet_constituent_embedding)
+        track_output = self.track_classification(probe_jet_constituent_embedding)
         
-        #probe_jet_embedding_top  = torch.squeeze(probe_jet_embedding_top,1)
-        probe_jet_embedding = torch.squeeze(probe_jet_embedding,1)
+        # Top Encoder Stack
+        probe_jet_embedding_NEW, probe_jet_constituent_embedding_NEW, event_embedding_NEW = self.stackTop(probe_jet_embedding,probe_jet_constituent_embedding,event_embedding)
+        probe_jet_embedding_Top = probe_jet_embedding + probe_jet_embedding_NEW
+
+        # Down Encoder Stack
+        probe_jet_embedding_NEW, probe_jet_constituent_embedding_NEW, event_embedding_NEW = self.stackDown(probe_jet_embedding,probe_jet_constituent_embedding,event_embedding)
+        probe_jet_embedding_Down = probe_jet_embedding + probe_jet_embedding_NEW
+
+        # Contract first dimension
+        probe_jet_embedding_Top  = torch.squeeze(probe_jet_embedding_Top,1)
+        probe_jet_embedding_Down = torch.squeeze(probe_jet_embedding_Down,1)
         
         # Get Top output
-        if self.analysis_type=="top":
-            top_kinematics = F.gelu(self.top_regression_input(probe_jet_embedding))
-            output = self.top_regression(top_kinematics)
+        top_kinematics = F.gelu(self.top_regression_input(probe_jet_embedding_Top))
+        top_output = self.top_regression(top_kinematics)
         
         # Get Down output
-        if self.analysis_type=="down":
-            down_kinematics = F.gelu(self.down_regression_input(probe_jet_embedding))
-            output = F.tanh(self.down_regression(down_kinematics))
+        down_kinematics = F.gelu(self.down_regression_input(probe_jet_embedding_Down))
+        down_output = self.down_regression(down_kinematics)
+
+        # Get Direct output
+        combined_output = torch.cat([top_output,down_output], axis=1)
+        costheta_output = F.gelu(self.direct_input(combined_output))
+        costheta_output = self.direct_output(costheta_output)
         
-        return output
+        return top_output, down_output, costheta_output, track_output
