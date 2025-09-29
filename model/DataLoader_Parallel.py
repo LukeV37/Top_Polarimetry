@@ -27,6 +27,13 @@ def clip_to_num(object_feature_dict, clip_num):
         clipped_feat_dict[key] = ak.fill_none(ak.pad_none(object_feature_dict[key], clip_num, clip=True), 0)
     return clipped_feat_dict
 
+def cut_neutrals(object_feature_dict):
+    q = object_feature_dict["q"]
+    mask = q!=0
+    for key in object_feature_dict:
+        object_feature_dict[key] = object_feature_dict[key][mask]
+    return object_feature_dict
+
 def combine_feats(feat_list, axis):
     if axis == 1:
         feat_list = [feat[:,np.newaxis] for feat in feat_list]
@@ -90,9 +97,10 @@ def load_file(file):
     probe_jet_constituent_var_list = ["pT", "eta", "phi", "q", "PID", "fromDown", "fromUp", "fromBottom"]
     probe_jet_constituent_dict = {"pT": probe_jet_constituent_pT, "eta": probe_jet_constituent_eta, "phi": probe_jet_constituent_phi, "q": probe_jet_constituent_q, "PID": probe_jet_constituent_PID,
                                   "fromDown": probe_jet_constituent_fromDown, "fromUp": probe_jet_constituent_fromUp, "fromBottom": probe_jet_constituent_fromBottom}
-    sorted_probe_jet_constituent_dict = sort_by_pT(probe_jet_constituent_dict)
+    probe_jet_constituents_no_neutrals_dict = cut_neutrals(probe_jet_constituent_dict)
+    sorted_probe_jet_constituent_dict = sort_by_pT(probe_jet_constituents_no_neutrals_dict)
     clipped_probe_jet_constituent_dict = clip_to_num(sorted_probe_jet_constituent_dict, max_constituent_num)
-    probe_jet_constituent_feats = combine_feats([clipped_probe_jet_constituent_dict["pT"], clipped_probe_jet_constituent_dict["eta"], clipped_probe_jet_constituent_dict["phi"], clipped_probe_jet_constituent_dict["q"], clipped_probe_jet_constituent_dict["PID"]], axis=2)
+    probe_jet_constituent_feats = combine_feats([clipped_probe_jet_constituent_dict["pT"], clipped_probe_jet_constituent_dict["eta"], clipped_probe_jet_constituent_dict["phi"], clipped_probe_jet_constituent_dict["q"]], axis=2)
 
     # Combine feats for balance jets: sort by pT, clip to max num, combine feats
     max_balance_jet_num=10
