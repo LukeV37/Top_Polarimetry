@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cmath>
 #include <vector>
 
 #include "Pythia8/Pythia.h"
@@ -16,6 +17,9 @@
 #include "include/estimate_ip.h"
 #include "include/traverse_history.h"
 #include "include/calc_labels.h"
+#include "include/isolated_lepton.h"
+#include "include/get_MET.h"
+#include "include/remove_particles_from_clustering.h"
 
 int main(int argc, char *argv[])
 {
@@ -41,29 +45,32 @@ int main(int argc, char *argv[])
     if (!pythia.init()) return 1;
 
     // Initialize output ROOT file, TTree, and Branches
-    TFile *output = new TFile(TString("../WS_")+TString(dataset_tag)+TString("/dataset_")+TString(dataset_tag)+TString("_")+TString(run_num)+TString(".root"),"recreate");
-    TTree *Pythia = new TTree("pythia", "pythia");
+    TFile *output = new TFile(TString("../WS_")+TString(dataset_tag)+TString("/dataset_selected_")+TString(dataset_tag)+TString("_")+TString(run_num)+TString(".root"),"recreate");
+    TTree *fastjet= new TTree("fastjet", "fastjet");
 
-    std::vector<float> p_pT, p_eta, p_phi, p_q, p_d0, p_z0, p_px, p_py, p_pz, p_e;
-    std::vector<int> p_pid, p_fromDown, p_fromUp, p_fromBottom, p_fromLepton, p_fromNu, p_fromAntiBottom;
-    Pythia->Branch("p_px", &p_px);
-    Pythia->Branch("p_py", &p_py);
-    Pythia->Branch("p_pz", &p_pz);
-    Pythia->Branch("p_e", &p_e);
-    Pythia->Branch("p_pt", &p_pT);
-    Pythia->Branch("p_eta", &p_eta);
-    Pythia->Branch("p_phi", &p_phi);
-    Pythia->Branch("p_q", &p_q);
-    Pythia->Branch("p_d0", &p_d0);
-    Pythia->Branch("p_z0", &p_z0);
-    Pythia->Branch("p_pid", &p_pid);
-    Pythia->Branch("p_fromDown", &p_fromDown);
-    Pythia->Branch("p_fromUp", &p_fromUp);
-    Pythia->Branch("p_fromBottom", &p_fromBottom);
-    Pythia->Branch("p_fromLepton", &p_fromLepton);
-    Pythia->Branch("p_fromNu", &p_fromNu);
-    Pythia->Branch("p_fromAntiBottom", &p_fromAntiBottom);
-
+    float lepton_pT;
+    float lepton_eta;
+    float lepton_phi;
+    int lepton_q;
+    float lepton_minDeltaR;
+    float nu_MET;
+    float nu_phi;
+    float probe_jet_pT;
+    float probe_jet_eta;
+    float probe_jet_phi;
+    float probe_jet_mass;
+    std::vector<float> probe_jet_constituent_pT;
+    std::vector<float> probe_jet_constituent_eta;
+    std::vector<float> probe_jet_constituent_phi;
+    std::vector<int> probe_jet_constituent_q;
+    std::vector<int> probe_jet_constituent_PID;
+    std::vector<int> probe_jet_constituent_fromDown;
+    std::vector<int> probe_jet_constituent_fromUp;
+    std::vector<int> probe_jet_constituent_fromBottom;
+    std::vector<float> balance_jets_pT;
+    std::vector<float> balance_jets_eta;
+    std::vector<float> balance_jets_phi;
+    float truth_top_pT, truth_top_eta, truth_top_phi;
     float top_px, top_py, top_pz, top_e;
     float anti_top_px, anti_top_py, anti_top_pz, anti_top_e;
     float down_px, down_py, down_pz, down_e;
@@ -71,27 +78,41 @@ int main(int argc, char *argv[])
     float down_px_boosted, down_py_boosted, down_pz_boosted, down_e_boosted;
     float costheta;
     TLorentzVector p_t, p_tbar, p_d;
-    Pythia->Branch("top_px", &top_px);
-    Pythia->Branch("top_py", &top_py);
-    Pythia->Branch("top_pz", &top_pz);
-    Pythia->Branch("top_e", &top_e);
-    Pythia->Branch("anti_top_px", &anti_top_px);
-    Pythia->Branch("anti_top_py", &anti_top_py);
-    Pythia->Branch("anti_top_pz", &anti_top_pz);
-    Pythia->Branch("anti_top_e", &anti_top_e);
-    Pythia->Branch("down_px", &down_px);
-    Pythia->Branch("down_py", &down_py);
-    Pythia->Branch("down_pz", &down_pz);
-    Pythia->Branch("down_e", &down_e);
-    Pythia->Branch("top_px_boosted", &top_px_boosted);
-    Pythia->Branch("top_py_boosted", &top_py_boosted);
-    Pythia->Branch("top_pz_boosted", &top_pz_boosted);
-    Pythia->Branch("top_e_boosted", &top_e_boosted);
-    Pythia->Branch("down_px_boosted", &down_px_boosted);
-    Pythia->Branch("down_py_boosted", &down_py_boosted);
-    Pythia->Branch("down_pz_boosted", &down_pz_boosted);
-    Pythia->Branch("down_e_boosted", &down_e_boosted);
-    Pythia->Branch("costheta", &costheta);
+
+    fastjet->Branch("lepton_pT", &lepton_pT);
+    fastjet->Branch("lepton_eta", &lepton_eta);
+    fastjet->Branch("lepton_phi", &lepton_phi);
+    fastjet->Branch("lepton_q", &lepton_q);
+    fastjet->Branch("lepton_minDeltaR", &lepton_minDeltaR);
+    fastjet->Branch("nu_MET", &nu_MET);
+    fastjet->Branch("nu_phi", &nu_phi);
+    fastjet->Branch("probe_jet_pT", &probe_jet_pT);
+    fastjet->Branch("probe_jet_eta", &probe_jet_eta);
+    fastjet->Branch("probe_jet_phi", &probe_jet_phi);
+    fastjet->Branch("probe_jet_mass", &probe_jet_mass);
+    fastjet->Branch("probe_jet_constituent_pT", &probe_jet_constituent_pT);
+    fastjet->Branch("probe_jet_constituent_eta", &probe_jet_constituent_eta);
+    fastjet->Branch("probe_jet_constituent_phi", &probe_jet_constituent_phi);
+    fastjet->Branch("probe_jet_constituent_q", &probe_jet_constituent_q);
+    fastjet->Branch("probe_jet_constituent_PID", &probe_jet_constituent_PID);
+    fastjet->Branch("probe_jet_constituent_fromDown", &probe_jet_constituent_fromDown);
+    fastjet->Branch("probe_jet_constituent_fromUp", &probe_jet_constituent_fromUp);
+    fastjet->Branch("probe_jet_constituent_fromBottom", &probe_jet_constituent_fromBottom);
+    fastjet->Branch("balance_jets_pT", &balance_jets_pT);
+    fastjet->Branch("balance_jets_eta", &balance_jets_eta);
+    fastjet->Branch("balance_jets_phi", &balance_jets_phi);
+    fastjet->Branch("truth_top_pT", &truth_top_pT);
+    fastjet->Branch("truth_top_eta", &truth_top_eta);
+    fastjet->Branch("truth_top_phi", &truth_top_phi);
+    fastjet->Branch("truth_top_px_boosted", &top_px_boosted);
+    fastjet->Branch("truth_top_py_boosted", &top_py_boosted);
+    fastjet->Branch("truth_top_pz_boosted", &top_pz_boosted);
+    fastjet->Branch("truth_top_e_boosted", &top_e_boosted);
+    fastjet->Branch("truth_down_px_boosted", &down_px_boosted);
+    fastjet->Branch("truth_down_py_boosted", &down_py_boosted);
+    fastjet->Branch("truth_down_pz_boosted", &down_pz_boosted);
+    fastjet->Branch("truth_down_e_boosted", &down_e_boosted);
+    fastjet->Branch("costheta", &costheta);
 
     // Configure Jet parameters
     float pTmin_jet = 250; // GeV
@@ -111,6 +132,13 @@ int main(int argc, char *argv[])
 
     int event_no = 0;
 
+    // Cutflow counters
+    int total_event_counter=0;
+    int isolated_lepton_cut=0;
+    int missingET_cut=0;
+    int fatjet_cut=0;
+    int leptonic_top=0;
+
     // Begin Event Loop; generate until none left in input file
     while (iAbort < nAbort) {
 
@@ -121,6 +149,8 @@ int main(int argc, char *argv[])
           ++iAbort;
           continue;
         }
+
+
 
         // Use depth-first-search to find down daughters
         std::vector<int> fromDown;
@@ -165,6 +195,7 @@ int main(int argc, char *argv[])
 
         costheta = calc_costheta(p_t, p_tbar, p_d, &top_px_boosted, &top_py_boosted, &top_pz_boosted, &top_e_boosted, &down_px_boosted, &down_py_boosted, &down_pz_boosted, &down_e_boosted);
 
+        /*
         if (event_no==0){
             std::cout << "top_idx: " << top_idx << std::endl;
             std::cout << "down_idx: " << down_idx << std::endl;
@@ -176,15 +207,26 @@ int main(int argc, char *argv[])
             std::cout << "anti_bottom_idx: " << anti_bottom_idx << std::endl;
             event_no++;
         }
+        */
 
         // Initialize vector for fastjet clustering and particle index
         std::vector<fastjet::PseudoJet> fastjet_particles;
+
+        // Initialize aux info
+        std::vector<int> p_PID;
+        std::vector<int> p_q;
+        std::vector<int> p_fromDown;
+        std::vector<int> p_fromUp;
+        std::vector<int> p_fromBottom;
+        std::vector<int> p_fromLepton;
+        std::vector<int> p_fromNu;
+
         int particle_num=0;
 
-        // prepare for filling
-        p_px.clear(); p_py.clear(); p_pz.clear(); p_e.clear(); p_pT.clear(); p_eta.clear(); p_phi.clear(); p_q.clear(); p_d0.clear(); p_z0.clear();
-        p_pid.clear(); p_fromDown.clear(); p_fromUp.clear(); p_fromBottom.clear(); p_fromLepton.clear(); p_fromNu.clear(); p_fromAntiBottom.clear();
-
+        // Clear output vectors
+        probe_jet_constituent_pT.clear(); probe_jet_constituent_eta.clear(); probe_jet_constituent_phi.clear(); probe_jet_constituent_q.clear(); probe_jet_constituent_PID.clear();
+        probe_jet_constituent_fromDown.clear(); probe_jet_constituent_fromUp.clear(); probe_jet_constituent_fromBottom.clear();
+        balance_jets_pT.clear(); balance_jets_eta.clear(); balance_jets_phi.clear();
 
         // Loop through particles in the event
         for(int j=0;j<pythia.event.size();j++){
@@ -194,39 +236,153 @@ int main(int argc, char *argv[])
 
             // Do not consider intermediate particles for clustering
             if (not p.isFinal()) continue;
-            // Do not consider neutrinos in clustering
-            //if (std::abs(p.id())==12 || std::abs(p.id())==14 || std::abs(p.id())==16) continue;
 
             // Convert particles to PseduoJet object, set the user idx, and append to the list of fastjet particles
             fastjet::PseudoJet fj(p.px(), p.py(), p.pz(), p.e());
             fj.set_user_index(particle_num++); // 0 based
             fastjet_particles.push_back(fj);
 
-            // Fill trk vector with all fastjet candidates
-            p_px.push_back(p.px());
-            p_py.push_back(p.py());
-            p_pz.push_back(p.pz());
-            p_e.push_back(p.e());
-            p_pT.push_back(p.pT());
-            p_eta.push_back(p.eta());
-            p_phi.push_back(p.phi());
+            p_PID.push_back(p.id());
             p_q.push_back(p.charge());
-            double d0,z0; find_ip(p.pT(),p.eta(),p.phi(),p.xProd(),p.yProd(),p.zProd(),d0,z0);
-            p_d0.push_back(d0);
-            p_z0.push_back(z0);
-            p_pid.push_back(p.id());
+
             p_fromDown.push_back(fromDown[j]);
             p_fromUp.push_back(fromUp[j]);
             p_fromBottom.push_back(fromBottom[j]);
             p_fromLepton.push_back(fromLepton[j]);
             p_fromNu.push_back(fromNu[j]);
-            p_fromAntiBottom.push_back(fromAntiBottom[j]);
         }
 
-        Pythia->Fill();
+        // Find the isolated lepton
+        int isolated_lepton_idx = isolated_lepton(fastjet_particles, &p_fromLepton, &p_PID, &lepton_minDeltaR);
 
-    } // End pythia event loop
+        // Get the lepton kinematics
+        fastjet::PseudoJet lepton = fastjet_particles[isolated_lepton_idx];
+        lepton_pT  = lepton.pt();
+        lepton_eta = lepton.eta();
+        lepton_phi = lepton.phi();
+        lepton_q   = p_q[isolated_lepton_idx];
 
+        // Skip the event if lepton is not isolated, less than 30GeV or |eta|>3
+        if (lepton_minDeltaR < 0.1 || lepton_pT < 30 || std::abs(lepton_eta)>3){
+            isolated_lepton_cut++;
+            continue;
+        }
+
+        // Get the neutrino
+        int MET_idx = get_MET(fastjet_particles, &p_fromNu, &p_PID);
+
+        // Store neutrino kinematics
+        nu_MET = fastjet_particles[MET_idx].Et();
+        nu_phi = fastjet_particles[MET_idx].phi();
+
+        // Skip event if the neutrino is less than 30GeV
+        if (nu_MET < 30){
+            missingET_cut++;
+            continue;
+        }
+
+        // Do not consider neutrinos in clustering
+        std::vector<int> remove_IDs;
+        for (int j=0; j<p_PID.size(); j++){
+            if (std::abs(p_PID[j])==12 || std::abs(p_PID[j])==14 || std::abs(p_PID[j])==16) remove_IDs.push_back(j);
+        }
+
+        // Remove the lepton and neutrino from clustering!
+        remove_IDs.push_back(isolated_lepton_idx);
+        std::vector<fastjet::PseudoJet> particles_no_lepton = remove_particles_from_clustering(fastjet_particles, remove_IDs);
+
+        // Cluster particles and pick up hardest largeR jet
+        float R_large = 2.0;
+        float pTmin_jet_large = 250; // GeV
+        fastjet::JetDefinition jetDef_large = fastjet::JetDefinition(fastjet::cambridge_algorithm, R_large, fastjet::E_scheme, fastjet::Best);
+        fastjet::ClusterSequence clustSeq_large(particles_no_lepton, jetDef_large);
+        auto jets_large = fastjet::sorted_by_pt( clustSeq_large.inclusive_jets(pTmin_jet_large) );
+
+        // Skip event if no jets are clustered
+        if (jets_large.size()==0){
+            fatjet_cut++;
+            continue;
+        }
+
+        // Get kinematics of the hardest jet
+        fastjet::PseudoJet hardest_jet = jets_large[0];
+        probe_jet_pT  = hardest_jet.pt();
+        probe_jet_eta = hardest_jet.eta();
+        probe_jet_phi = hardest_jet.phi();
+        probe_jet_mass= hardest_jet.m();
+
+        // Skip event if jet has |eta|>3
+        if (std::abs(probe_jet_eta)>3){
+            fatjet_cut++;
+            continue;
+        }
+
+        // Store jet constituents
+        std::vector<int> hardest_jet_constituents;
+        for (auto trk:hardest_jet.constituents()){
+            //if (trk.pt() > 0.4 and std::abs(trk.eta()) < 4.5){
+               hardest_jet_constituents.push_back(trk.user_index());
+               probe_jet_constituent_pT.push_back(trk.pt());
+               probe_jet_constituent_eta.push_back(trk.eta());
+               probe_jet_constituent_phi.push_back(trk.phi());
+               probe_jet_constituent_q.push_back(p_q[trk.user_index()]);
+               probe_jet_constituent_PID.push_back(p_PID[trk.user_index()]);
+               probe_jet_constituent_fromDown.push_back(p_fromDown[trk.user_index()]);
+               probe_jet_constituent_fromUp.push_back(p_fromUp[trk.user_index()]);
+               probe_jet_constituent_fromBottom.push_back(p_fromBottom[trk.user_index()]);
+            //}
+        }
+
+        // Remove the constituents from clustering
+        std::vector<fastjet::PseudoJet> particles_no_fatjet= remove_particles_from_clustering(particles_no_lepton, hardest_jet_constituents);
+
+        // Cluster small R jets
+        float R_small = 0.4;
+        float pTmin_jet_small = 10; // GeV
+        fastjet::JetDefinition jetDef_small = fastjet::JetDefinition(fastjet::antikt_algorithm, R_small, fastjet::E_scheme, fastjet::Best);
+        fastjet::ClusterSequence clustSeq_small(particles_no_fatjet, jetDef_small);
+        auto jets_small = fastjet::sorted_by_pt( clustSeq_small.inclusive_jets(pTmin_jet_small) );
+
+        // Ensure there is a small R jet on leptonic side
+        int selected_small_jet=0;
+        float lep_jet_dR;
+        for (auto jet:jets_small){
+            lep_jet_dR = lepton.delta_R(jet);
+            if (lep_jet_dR > 0.3 && jet.pt() > 30 && jet.eta() < 3){
+                selected_small_jet=1;
+            }
+        }
+        if (selected_small_jet==0){
+            leptonic_top++;
+            continue;
+        }
+
+        // Store smallR jet kinematics
+        for (auto jet:jets_small){
+            balance_jets_pT.push_back(jet.pt());
+            balance_jets_eta.push_back(jet.eta());
+            balance_jets_phi.push_back(jet.phi());
+        }
+
+        // Store truth top kinematics
+        fastjet::PseudoJet truth_top(top_px, top_py, top_pz, top_e);
+        truth_top_pT = truth_top.pt();
+        truth_top_eta = truth_top.eta();
+        truth_top_phi = truth_top.phi();
+
+        // Fill ROOT file
+        fastjet->Fill();
+    }
+
+    // Print out cutflow
+    std::cout << "Total Events: " << total_event_counter << std::endl;
+    std::cout << "Isolated Lepton Cut: " << isolated_lepton_cut << std::endl;
+    std::cout << "MissingET Cut: " << missingET_cut << std::endl;
+    std::cout << "FatJet Cut: " << fatjet_cut << std::endl;
+    std::cout << "SmallR Jet Cut: " << leptonic_top << std::endl;
+    std::cout << "Remaining Events: " << total_event_counter - isolated_lepton_cut - missingET_cut - fatjet_cut - leptonic_top << std::endl;
+
+    // Write out ROOT file
     output->Write();
     output->Close();
 
