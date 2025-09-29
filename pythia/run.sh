@@ -26,7 +26,8 @@ batch=1
 for (( i=0 ; i<$runs ; i++ ));
 do
     echo -e "\t\tSubmitting job to shower run $i"
-    (./run_dataset $tag $i; ./run_selections $tag $i) > "../WS_${tag}/logs/dataset_${tag}_${i}.log" 2>&1 &
+    #(./run_dataset $tag $i; ./run_selections $tag $i) > "../WS_${tag}/logs/dataset_${tag}_${i}.log" 2>&1 &
+    ./run_dataset $tag $i > "../WS_${tag}/logs/dataset_${tag}_${i}.log" 2>&1 &
     job=$((job+1))
     if [ $job == $max_cpu_cores ]; then
         echo -e "\tStopping jobs submissions! Please wait for batch $batch to finish..."
