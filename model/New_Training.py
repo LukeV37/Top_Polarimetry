@@ -101,16 +101,16 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
             prob_pz = hist_pz / hist_pz.sum()
 
             # Avoid zero for log computation
-            prob_px = prob_px + 1e-5
-            prob_py = prob_py + 1e-5
-            prob_pz = prob_pz + 1e-5
+            prob_px = prob_px + 1e-8
+            prob_py = prob_py + 1e-8
+            prob_pz = prob_pz + 1e-8
             prob_px = prob_px / prob_px.sum()
             prob_py = prob_py / prob_py.sum()
             prob_pz = prob_pz / prob_pz.sum()
 
             p_uniform = torch.full_like(prob_px, 1.0 / num_bins)
 
-            down_kl_loss  = kl_loss(torch.log(prob_px), p_uniform) + kl_loss(torch.log(prob_py), p_uniform) + kl_loss(torch.log(prob_pz), p_uniform)
+            down_kl_loss  = torch.nan_to_num(kl_loss(torch.log(prob_px), p_uniform) + kl_loss(torch.log(prob_py), p_uniform) + kl_loss(torch.log(prob_pz), p_uniform))
 
             loss  = alpha*top_loss + beta*down_loss + gamma*costheta_loss + delta*down_kl_loss# + delta*track_loss
 
@@ -137,7 +137,6 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
             #track_loss    = CCE_loss_fn(trk_output, track_labels.to(device))
 
             # Convert pred to log probability and true to probability
-            bins = torch.linspace(-1, 1, num_bins+1, device=device)
             down_px_pred = down_pred[:,0]
             down_py_pred = down_pred[:,1]
             down_pz_pred = down_pred[:,2]
@@ -162,7 +161,7 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
 
             p_uniform = torch.full_like(prob_px, 1.0 / num_bins)
 
-            down_kl_loss  = kl_loss(torch.log(prob_px), p_uniform) + kl_loss(torch.log(prob_py), p_uniform) + kl_loss(torch.log(prob_pz), p_uniform)
+            down_kl_loss  = torch.nan_to_num(kl_loss(torch.log(prob_px), p_uniform) + kl_loss(torch.log(prob_py), p_uniform) + kl_loss(torch.log(prob_pz), p_uniform))
 
             loss  = alpha*top_loss + beta*down_loss + gamma*costheta_loss + delta*down_kl_loss# + delta*track_loss
 
