@@ -61,11 +61,6 @@ def get_norm(px, py, pz):
     norm = np.sqrt(px**2+py**2+pz**2)
     return px/norm, py/norm, pz/norm
 
-def add_axis(object_feature_dict, axis):
-    for key in object_feature_dict:
-        object_feature_dict[key] = torch.unsqueeze(object_feature_dict[key], dim=axis)
-    return object_feature_dict
-
 def load_file(file):
     print(file)
     with uproot.open(file) as f:
