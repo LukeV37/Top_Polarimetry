@@ -51,11 +51,9 @@ class Model(nn.Module):
         self.num_heads = num_heads
         
         # Initiliazer
-        self.lepton_initializer = nn.Linear(4, self.embed_dim)
-        self.MET_initializer = nn.Linear(2, self.embed_dim)
         self.probe_jet_initializer = nn.Linear(4, self.embed_dim)
         self.probe_jet_constituent_initializer = nn.Linear(4, self.embed_dim)
-        self.small_jet_initializer = nn.Linear(3, self.embed_dim)
+        self.event_initializer = nn.Linear(4, self.embed_dim)
            
         # Transformer Stack
         self.stack1 = Stack(self.embed_dim, self.num_heads)
@@ -79,17 +77,12 @@ class Model(nn.Module):
         # Track Classification
         #self.track_classification = nn.Linear(self.embed_dim, 3)
 
-    def forward(self, lepton, MET, probe_jet, probe_jet_constituent, small_jet):
+    def forward(self, probe_jet, probe_jet_constituent, event_tensor):
         
         # Feature initialization layers
-        lepton_embedding = torch.unsqueeze(F.gelu(self.lepton_initializer(lepton)), dim=1)
-        MET_embedding = torch.unsqueeze(F.gelu(self.MET_initializer(MET)), dim=1)
-        probe_jet_embedding = torch.unsqueeze(F.gelu(self.probe_jet_initializer(probe_jet)), dim=1)
+        probe_jet_embedding = F.gelu(self.probe_jet_initializer(probe_jet))
         probe_jet_constituent_embedding = F.gelu(self.probe_jet_constituent_initializer(probe_jet_constituent))
-        small_jet_embedding = F.gelu(self.small_jet_initializer(small_jet))
-        
-        # Combine objects into single event tensor
-        event_embedding = torch.cat([probe_jet_embedding, probe_jet_constituent_embedding, lepton_embedding, MET_embedding, small_jet_embedding], axis=1)
+        event_embedding = F.gelu(self.event_initializer(event_tensor))
         
         # Transformer Encoder Stack
         probe_jet_embedding_NEW, probe_jet_constituent_embedding_NEW, event_embedding_NEW = self.stack1(probe_jet_embedding,probe_jet_constituent_embedding,event_embedding)

@@ -9,6 +9,7 @@ import matplotlib.colors as mcolors
 from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_score, roc_auc_score
 import sys
 from new_model import *
+from DataLoader_Parallel import CustomDataset
 
 tag = str(sys.argv[1])
 epochs = int(sys.argv[2])
@@ -18,7 +19,7 @@ dir_training = str(sys.argv[5])
 
 dir_startingPoint = "WS_U_10M/training_klDiv_loss_20epoch_32embed"
 
-starting_new = False
+starting_new = True
 continue_training = not starting_new
 
 # Loss parameters
@@ -26,22 +27,6 @@ alpha = 1
 beta  = 1000000
 gamma = 100000
 delta = 1000000
-
-class CustomDataset(Dataset):
-    def __init__(self):
-        self.lepton = 0
-        self.nu = 0
-        self.probe_jet = 0
-        self.probe_jet_constituents = 0
-        self.balance_jets = 0
-        self.top_labels = 0
-        self.down_labels = 0
-        self.direct_labels = 0
-        self.track_labels = 0
-    def __getitem__(self, idx):
-        return self.lepton[idx], self.nu[idx], self.probe_jet[idx], self.probe_jet_constituents[idx], self.balance_jets[idx], self.top_labels[idx], self.down_labels[idx], self.direct_labels[idx], self.track_labels[idx]
-    def __len__(self):
-        return len(self.lepton)
 
 batch_size=128
 
@@ -75,8 +60,8 @@ kl_loss     = nn.KLDivLoss(reduction="batchmean")
 print("Trainable Parameters :", sum(p.numel() for p in model.parameters() if p.requires_grad))
 print("Number of Training Events: ", len(train_loader)*batch_size)
 
-for lepton, MET, probe_jet, constituents, small_jet, top_labels, down_labels, direct_labels, track_labels in train_loader:
-    top_pred, down_pred, direct_pred, track_pred = model(lepton.to(device), MET.to(device), probe_jet.to(device), constituents.to(device), small_jet.to(device))
+for probe_jet, constituents, event, top_labels, down_labels, direct_labels, track_labels in train_loader:
+    top_pred, down_pred, direct_pred, track_pred = model(probe_jet.to(device), constituents.to(device), event.to(device))
     break
 
 def train(model, optimizer, train_loader, val_loader, epochs=40):
@@ -88,10 +73,10 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
         cumulative_loss_train = 0
         num_train = len(train_loader)
 
-        for lepton, MET, probe_jet, constituents, small_jet, top_labels, down_labels, direct_labels, track_labels in train_loader:
+        for probe_jet, constituents, event, top_labels, down_labels, direct_labels, track_labels in train_loader:
             optimizer.zero_grad()
             
-            top_pred, down_pred, direct_pred, track_pred = model(lepton.to(device), MET.to(device), probe_jet.to(device), constituents.to(device), small_jet.to(device))
+            top_pred, down_pred, direct_pred, track_pred = model(probe_jet.to(device), constituents.to(device), event.to(device))
                         
             top_loss      = MSE_loss_fn(top_pred, top_labels.to(device))
             down_loss     = MSE_loss_fn(down_pred, down_labels.to(device))
@@ -116,9 +101,9 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
             prob_pz = hist_pz / hist_pz.sum()
 
             # Avoid zero for log computation
-            prob_px = prob_px + 1e-8
-            prob_py = prob_py + 1e-8
-            prob_pz = prob_pz + 1e-8
+            prob_px = prob_px + 1e-5
+            prob_py = prob_py + 1e-5
+            prob_pz = prob_pz + 1e-5
             prob_px = prob_px / prob_px.sum()
             prob_py = prob_py / prob_py.sum()
             prob_pz = prob_pz / prob_pz.sum()
@@ -143,8 +128,8 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
         cumulative_loss_direct_val = 0
         cumulative_loss_kl_val= 0
         num_val = len(val_loader)
-        for lepton, MET, probe_jet, constituents, small_jet, top_labels, down_labels, direct_labels, track_labels in val_loader:
-            top_pred, down_pred, direct_pred, track_pred = model(lepton.to(device), MET.to(device), probe_jet.to(device), constituents.to(device), small_jet.to(device))
+        for probe_jet, constituents, event, top_labels, down_labels, direct_labels, track_labels in val_loader:
+            top_pred, down_pred, direct_pred, track_pred = model(probe_jet.to(device), constituents.to(device), event.to(device))
 
             top_loss      = MSE_loss_fn(top_pred, top_labels.to(device))
             down_loss     = MSE_loss_fn(down_pred, down_labels.to(device))
@@ -240,9 +225,8 @@ direct_feats=1
 pred_direct = np.array([]).reshape(0,direct_feats)
 true_direct = np.array([]).reshape(0,direct_feats)
 
-for lepton, MET, probe_jet, constituents, small_jet, top_labels, down_labels, direct_labels, track_labels in test_loader:
-    #top_pred, down_pred, direct_pred, trk_output = model(lepton.to(device), MET.to(device), probe_jet.to(device), constituents.to(device), small_jet.to(device))
-    top_pred, down_pred, direct_pred, track_pred = model(lepton.to(device), MET.to(device), probe_jet.to(device), constituents.to(device), small_jet.to(device))
+for probe_jet, constituents, event, top_labels, down_labels, direct_labels, track_labels in test_loader:
+    top_pred, down_pred, direct_pred, track_pred = model(probe_jet.to(device), constituents.to(device), event.to(device))
 
     pred_top = np.vstack((pred_top,top_pred.detach().cpu().numpy()))
     true_top = np.vstack((true_top,top_labels.detach().cpu().numpy()))
