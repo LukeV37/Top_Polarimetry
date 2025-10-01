@@ -20,9 +20,6 @@ class Encoder(nn.Module):
         latent = Query + context
         tmp = F.gelu(self.out(latent))
         latent = latent + tmp
-        return_weights=False
-        if return_weights:
-            return latent,weights
         return latent
 
 class Stack(nn.Module):
@@ -73,9 +70,6 @@ class Model(nn.Module):
         # Direct regression
         self.direct_input = nn.Linear(7, self.embed_dim)
         self.direct_output = nn.Linear(self.embed_dim, 1)
-
-        # Track Classification
-        #self.track_classification = nn.Linear(self.embed_dim, 3)
 
     def forward(self, probe_jet, probe_jet_constituent, event_tensor):
         
