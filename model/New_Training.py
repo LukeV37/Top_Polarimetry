@@ -16,16 +16,16 @@ embed_dim = int(sys.argv[3])
 dir_dataset = str(sys.argv[4])
 dir_training = str(sys.argv[5])
 
-dir_startingPoint = "WS_U_10M/training_combinedModel_v3_60epoch_32embed"
+dir_startingPoint = "WS_U_10M/training_klDiv_loss_20epoch_32embed"
 
-starting_new = True
+starting_new = False
 continue_training = not starting_new
 
 # Loss parameters
 alpha = 1
 beta  = 1000000
 gamma = 100000
-#delta = 0
+delta = 1000000
 
 class CustomDataset(Dataset):
     def __init__(self):
@@ -70,6 +70,7 @@ optimizer = optim.AdamW(model.parameters(), lr=0.0001)
 
 MSE_loss_fn = nn.MSELoss()
 CCE_loss_fn = nn.CrossEntropyLoss()
+kl_loss     = nn.KLDivLoss(reduction="batchmean")
 
 print("Trainable Parameters :", sum(p.numel() for p in model.parameters() if p.requires_grad))
 print("Number of Training Events: ", len(train_loader)*batch_size)
@@ -96,7 +97,37 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
             down_loss     = MSE_loss_fn(down_pred, down_labels.to(device))
             costheta_loss = MSE_loss_fn(direct_pred, direct_labels.to(device))
             #track_loss    = CCE_loss_fn(trk_output, track_labels.to(device))
-            loss  = alpha*top_loss + beta*down_loss + gamma*costheta_loss# + delta*track_loss
+
+            # Convert pred to log probability and true to probability
+            num_bins=20
+            bins = torch.linspace(-1, 1, num_bins+1, device=device)
+            down_px_pred = down_pred[:,0]
+            down_py_pred = down_pred[:,1]
+            down_pz_pred = down_pred[:,2]
+
+            # Create histogram of output predictions
+            hist_px = torch.histc(down_px_pred, bins=num_bins, min=-1, max=1)
+            hist_py = torch.histc(down_py_pred, bins=num_bins, min=-1, max=1)
+            hist_pz = torch.histc(down_pz_pred, bins=num_bins, min=-1, max=1)
+
+            # Normalize output predictions to probability
+            prob_px = hist_px / hist_px.sum()
+            prob_py = hist_py / hist_py.sum()
+            prob_pz = hist_pz / hist_pz.sum()
+
+            # Avoid zero for log computation
+            prob_px = prob_px + 1e-8
+            prob_py = prob_py + 1e-8
+            prob_pz = prob_pz + 1e-8
+            prob_px = prob_px / prob_px.sum()
+            prob_py = prob_py / prob_py.sum()
+            prob_pz = prob_pz / prob_pz.sum()
+
+            p_uniform = torch.full_like(prob_px, 1.0 / num_bins)
+
+            down_kl_loss  = kl_loss(torch.log(prob_px), p_uniform) + kl_loss(torch.log(prob_py), p_uniform) + kl_loss(torch.log(prob_pz), p_uniform)
+
+            loss  = alpha*top_loss + beta*down_loss + gamma*costheta_loss + delta*down_kl_loss# + delta*track_loss
 
             loss.backward()
             optimizer.step()
@@ -110,6 +141,7 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
         cumulative_loss_top_val = 0
         cumulative_loss_down_val = 0
         cumulative_loss_direct_val = 0
+        cumulative_loss_kl_val= 0
         num_val = len(val_loader)
         for lepton, MET, probe_jet, constituents, small_jet, top_labels, down_labels, direct_labels, track_labels in val_loader:
             top_pred, down_pred, direct_pred, track_pred = model(lepton.to(device), MET.to(device), probe_jet.to(device), constituents.to(device), small_jet.to(device))
@@ -118,17 +150,48 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
             down_loss     = MSE_loss_fn(down_pred, down_labels.to(device))
             costheta_loss = MSE_loss_fn(direct_pred, direct_labels.to(device))
             #track_loss    = CCE_loss_fn(trk_output, track_labels.to(device))
-            loss  = alpha*top_loss + beta*down_loss + gamma*costheta_loss# + delta*track_loss
+
+            # Convert pred to log probability and true to probability
+            bins = torch.linspace(-1, 1, num_bins+1, device=device)
+            down_px_pred = down_pred[:,0]
+            down_py_pred = down_pred[:,1]
+            down_pz_pred = down_pred[:,2]
+
+            # Create histogram of output predictions
+            hist_px = torch.histc(down_px_pred, bins=num_bins, min=-1, max=1)
+            hist_py = torch.histc(down_py_pred, bins=num_bins, min=-1, max=1)
+            hist_pz = torch.histc(down_pz_pred, bins=num_bins, min=-1, max=1)
+
+            # Normalize output predictions to probability
+            prob_px = hist_px / hist_px.sum()
+            prob_py = hist_py / hist_py.sum()
+            prob_pz = hist_pz / hist_pz.sum()
+
+            # Avoid zero for log computation
+            prob_px = prob_px + 1e-8
+            prob_py = prob_py + 1e-8
+            prob_pz = prob_pz + 1e-8
+            prob_px = prob_px / prob_px.sum()
+            prob_py = prob_py / prob_py.sum()
+            prob_pz = prob_pz / prob_pz.sum()
+
+            p_uniform = torch.full_like(prob_px, 1.0 / num_bins)
+
+            down_kl_loss  = kl_loss(torch.log(prob_px), p_uniform) + kl_loss(torch.log(prob_py), p_uniform) + kl_loss(torch.log(prob_pz), p_uniform)
+
+            loss  = alpha*top_loss + beta*down_loss + gamma*costheta_loss + delta*down_kl_loss# + delta*track_loss
 
             cumulative_loss_val+=loss.detach().cpu().numpy().mean()
             cumulative_loss_top_val+=top_loss.detach().cpu().numpy().mean()
             cumulative_loss_down_val+=down_loss.detach().cpu().numpy().mean()
             cumulative_loss_direct_val+=costheta_loss.detach().cpu().numpy().mean()
+            cumulative_loss_kl_val+=down_kl_loss.detach().cpu().numpy().mean()
         
         cumulative_loss_val = cumulative_loss_val / num_val
         cumulative_loss_top_val = alpha*cumulative_loss_top_val / num_val
         cumulative_loss_down_val = beta*cumulative_loss_down_val / num_val
         cumulative_loss_direct_val = gamma*cumulative_loss_direct_val / num_val
+        cumulative_loss_kl_val= delta*cumulative_loss_kl_val / num_val
         
         combined_history.append([cumulative_loss_train, cumulative_loss_val])
 
@@ -137,6 +200,7 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
             print('\t\t\t\t\tTop Loss: ', round(cumulative_loss_top_val,6))
             print('\t\t\t\t\tDown Loss: ', round(cumulative_loss_down_val,6))
             print('\t\t\t\t\tDirect Loss: ', round(cumulative_loss_direct_val,6))
+            print('\t\t\t\t\tKLDiv Loss: ', round(cumulative_loss_kl_val,6))
 
         torch.save(model,dir_training+"/models/model_Epoch_"+str(e+1)+".torch")
             
