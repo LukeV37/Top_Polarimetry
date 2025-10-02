@@ -117,4 +117,4 @@ class Model(nn.Module):
         costheta_output = F.gelu(self.direct_input(combined_output))
         costheta_output = self.direct_output(costheta_output)
         
-        return top_output, down_output, costheta_output, track_output
+        return top_output, down_output, costheta_output, None
