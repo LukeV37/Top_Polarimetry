@@ -60,7 +60,7 @@ kl_loss     = nn.KLDivLoss(reduction="batchmean")
 print("Trainable Parameters :", sum(p.numel() for p in model.parameters() if p.requires_grad))
 print("Number of Training Events: ", len(train_loader)*batch_size)
 
-for probe_jet, constituents, event, top_labels, down_labels, direct_labels, track_labels in train_loader:
+for probe_jet, constituents, event, top_labels, down_labels, bottom_labels, direct_labels, track_labels in train_loader:
     top_pred, down_pred, direct_pred, track_pred = model(probe_jet.to(device), constituents.to(device), event.to(device))
     break
 
@@ -73,14 +73,15 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
         cumulative_loss_train = 0
         num_train = len(train_loader)
 
-        for probe_jet, constituents, event, top_labels, down_labels, direct_labels, track_labels in train_loader:
+        for probe_jet, constituents, event, top_labels, down_labels, bottom_labels, direct_labels, track_labels in train_loader:
             optimizer.zero_grad()
             
             top_pred, down_pred, direct_pred, track_pred = model(probe_jet.to(device), constituents.to(device), event.to(device))
                         
             top_loss      = MSE_loss_fn(top_pred, top_labels.to(device))
             down_loss     = MSE_loss_fn(down_pred, down_labels.to(device))
-            costheta_loss = MSE_loss_fn(direct_pred, direct_labels.to(device))
+            costheta_down_loss = MSE_loss_fn(direct_pred, direct_labels[:,0].reshape(-1,1).to(device))
+            costheta_bottom_loss = MSE_loss_fn(direct_pred, direct_labels[:,1].reshape(-1,1).to(device))
             #track_loss    = CCE_loss_fn(trk_output, track_labels.to(device))
 
             # Convert pred to log probability and true to probability
@@ -112,7 +113,7 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
 
             down_kl_loss  = torch.nan_to_num(kl_loss(torch.log(prob_px), p_uniform) + kl_loss(torch.log(prob_py), p_uniform) + kl_loss(torch.log(prob_pz), p_uniform))
 
-            loss  = alpha*top_loss + beta*down_loss + gamma*costheta_loss + delta*down_kl_loss# + delta*track_loss
+            loss  = alpha*top_loss + beta*down_loss + gamma*costheta_down_loss + delta*down_kl_loss# + delta*track_loss
 
             loss.backward()
             optimizer.step()
@@ -128,12 +129,13 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
         cumulative_loss_direct_val = 0
         cumulative_loss_kl_val= 0
         num_val = len(val_loader)
-        for probe_jet, constituents, event, top_labels, down_labels, direct_labels, track_labels in val_loader:
+        for probe_jet, constituents, event, top_labels, down_labels, bottom_labels, direct_labels, track_labels in val_loader:
             top_pred, down_pred, direct_pred, track_pred = model(probe_jet.to(device), constituents.to(device), event.to(device))
 
             top_loss      = MSE_loss_fn(top_pred, top_labels.to(device))
             down_loss     = MSE_loss_fn(down_pred, down_labels.to(device))
-            costheta_loss = MSE_loss_fn(direct_pred, direct_labels.to(device))
+            costheta_down_loss = MSE_loss_fn(direct_pred, direct_labels[:,0].reshape(-1,1).to(device))
+            costheta_bottom_loss = MSE_loss_fn(direct_pred, direct_labels[:,1].reshape(-1,1).to(device))
             #track_loss    = CCE_loss_fn(trk_output, track_labels.to(device))
 
             # Convert pred to log probability and true to probability
@@ -163,12 +165,12 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
 
             down_kl_loss  = torch.nan_to_num(kl_loss(torch.log(prob_px), p_uniform) + kl_loss(torch.log(prob_py), p_uniform) + kl_loss(torch.log(prob_pz), p_uniform))
 
-            loss  = alpha*top_loss + beta*down_loss + gamma*costheta_loss + delta*down_kl_loss# + delta*track_loss
+            loss  = alpha*top_loss + beta*down_loss + gamma*costheta_down_loss + delta*down_kl_loss# + delta*track_loss
 
             cumulative_loss_val+=loss.detach().cpu().numpy().mean()
             cumulative_loss_top_val+=top_loss.detach().cpu().numpy().mean()
             cumulative_loss_down_val+=down_loss.detach().cpu().numpy().mean()
-            cumulative_loss_direct_val+=costheta_loss.detach().cpu().numpy().mean()
+            cumulative_loss_direct_val+=costheta_down_loss.detach().cpu().numpy().mean()
             cumulative_loss_kl_val+=down_kl_loss.detach().cpu().numpy().mean()
         
         cumulative_loss_val = cumulative_loss_val / num_val
@@ -224,7 +226,7 @@ direct_feats=1
 pred_direct = np.array([]).reshape(0,direct_feats)
 true_direct = np.array([]).reshape(0,direct_feats)
 
-for probe_jet, constituents, event, top_labels, down_labels, direct_labels, track_labels in test_loader:
+for probe_jet, constituents, event, top_labels, down_labels, bottom_labels, direct_labels, track_labels in test_loader:
     top_pred, down_pred, direct_pred, track_pred = model(probe_jet.to(device), constituents.to(device), event.to(device))
 
     pred_top = np.vstack((pred_top,top_pred.detach().cpu().numpy()))
@@ -234,13 +236,14 @@ for probe_jet, constituents, event, top_labels, down_labels, direct_labels, trac
     true_down = np.vstack((true_down,down_labels.detach().cpu().numpy()))
 
     pred_direct = np.vstack((pred_direct,direct_pred.detach().cpu().numpy()))
-    true_direct = np.vstack((true_direct,direct_labels.detach().cpu().numpy()))
+    true_direct = np.vstack((true_direct,direct_labels[:,0].reshape(-1,1).detach().cpu().numpy()))
 
     top_loss     = MSE_loss_fn(top_pred, top_labels.to(device))
     down_loss     = MSE_loss_fn(down_pred, down_labels.to(device))
-    costheta_loss = MSE_loss_fn(direct_pred, direct_labels.to(device))
+    costheta_down_loss = MSE_loss_fn(direct_pred, direct_labels[:,0].reshape(-1,1).to(device))
+    costheta_bottom_loss = MSE_loss_fn(direct_pred, direct_labels[:,1].reshape(-1,1).to(device))
     #track_loss    = CCE_loss_fn(trk_output, track_labels.to(device))
-    loss  = alpha*top_loss + beta*down_loss + gamma*costheta_loss# + delta*track_loss
+    loss  = alpha*top_loss + beta*down_loss + gamma*costheta_down_loss# + delta*down_kl_loss# + delta*track_loss
 
 def validate_predictions(true, pred, var_names):
     num_feats = len(var_names)
