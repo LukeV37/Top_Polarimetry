@@ -80,7 +80,7 @@ int main(int argc, char *argv[])
     float bottom_px_boosted, bottom_py_boosted, bottom_pz_boosted, bottom_e_boosted;
     float costheta_down;
     float costheta_bottom;
-    TLorentzVector p_t, p_tbar, p_d;
+    TLorentzVector p_t, p_tbar, p_d, p_b;
 
     fastjet->Branch("lepton_pT", &lepton_pT);
     fastjet->Branch("lepton_eta", &lepton_eta);
