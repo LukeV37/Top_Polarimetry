@@ -204,9 +204,10 @@ int main(int argc, char *argv[])
         p_t = TLorentzVector(top_px, top_py, top_pz, top_e);
         p_tbar = TLorentzVector(anti_top_px, anti_top_py, anti_top_pz, anti_top_e);
         p_d = TLorentzVector(down_px, down_py, down_pz, down_e);
+        p_b = TLorentzVector(bottom_px, bottom_py, bottom_pz, bottom_e);
 
         costheta_down = calc_costheta(p_t, p_tbar, p_d, &top_px_boosted, &top_py_boosted, &top_pz_boosted, &top_e_boosted, &down_px_boosted, &down_py_boosted, &down_pz_boosted, &down_e_boosted);
-        costheta_bottom = calc_costheta(p_t, p_tbar, p_d, &top_px_boosted, &top_py_boosted, &top_pz_boosted, &top_e_boosted, &bottom_px_boosted, &bottom_py_boosted, &bottom_pz_boosted, &bottom_e_boosted);
+        costheta_bottom = calc_costheta(p_t, p_tbar, p_b, &top_px_boosted, &top_py_boosted, &top_pz_boosted, &top_e_boosted, &bottom_px_boosted, &bottom_py_boosted, &bottom_pz_boosted, &bottom_e_boosted);
 
         /*
         if (event_no==0){
