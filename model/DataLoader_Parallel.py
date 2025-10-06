@@ -10,18 +10,19 @@ import sys
 class CustomDataset(Dataset):
     def __init__(self, file):
 
-        probe_jet_feats, probe_jet_constituent_feats, event_tensor_feats, top_labels, down_labels, direct_labels, track_labels = load_file(file)
+        probe_jet_feats, probe_jet_constituent_feats, event_tensor_feats, top_labels, down_labels, bottom_labels, direct_labels, track_labels = load_file(file)
 
         self.probe_jet = probe_jet_feats
         self.probe_jet_constituents = probe_jet_constituent_feats
         self.event_tensor_feats = event_tensor_feats
         self.top_labels = top_labels
         self.down_labels = down_labels
+        self.bottom_labels = bottom_labels
         self.direct_labels = direct_labels
         self.track_labels = track_labels
     
     def __getitem__(self, idx):
-        return self.probe_jet[idx], self.probe_jet_constituents[idx], self.event_tensor_feats[idx], self.top_labels[idx], self.down_labels[idx], self.direct_labels[idx], self.track_labels[idx]
+        return self.probe_jet[idx], self.probe_jet_constituents[idx], self.event_tensor_feats[idx], self.top_labels[idx], self.down_labels[idx], self.bottom_labels[idx],self.direct_labels[idx], self.track_labels[idx]
 
     def __len__(self):
         return len(self.probe_jet)
@@ -92,8 +93,11 @@ def load_file(file):
         truth_down_px_boosted = f["truth_down_px_boosted"].array()
         truth_down_py_boosted = f["truth_down_py_boosted"].array()
         truth_down_pz_boosted = f["truth_down_pz_boosted"].array()
-        #truth_down_e_boosted = f["truth_down_e_boosted"].array()
-        truth_costheta = f["costheta"].array()
+        truth_costheta_down = f["costheta_down"].array()
+        truth_bottom_px_boosted = f["truth_bottom_px_boosted"].array()
+        truth_bottom_py_boosted = f["truth_bottom_py_boosted"].array()
+        truth_bottom_pz_boosted = f["truth_bottom_pz_boosted"].array()
+        truth_costheta_bottom = f["costheta_bottom"].array()
 
         # Track Labels
         probe_jet_constituent_fromDown= f["probe_jet_constituent_fromDown"].array()
@@ -138,9 +142,11 @@ def load_file(file):
 
     # Combine labels into single tensor
     truth_down_px_norm, truth_down_py_norm, truth_down_pz_norm = get_norm(truth_down_px_boosted, truth_down_py_boosted, truth_down_pz_boosted)
+    truth_bottom_px_norm, truth_bottom_py_norm, truth_bottom_pz_norm = get_norm(truth_bottom_px_boosted, truth_bottom_py_boosted, truth_bottom_pz_boosted)
     top_labels = combine_feats([truth_top_px_boosted, truth_top_py_boosted, truth_top_pz_boosted, truth_top_e_boosted], axis=1)
     down_labels = combine_feats([truth_down_px_norm, truth_down_py_norm, truth_down_pz_norm], axis=1)
-    direct_labels = combine_feats([truth_costheta], axis=1)
+    bottom_labels = combine_feats([truth_bottom_px_norm, truth_bottom_py_norm, truth_bottom_pz_norm], axis=1)
+    direct_labels = combine_feats([truth_costheta_down, truth_costheta_bottom], axis=1)
     track_labels = combine_feats([clipped_probe_jet_constituent_dict["fromDown"], clipped_probe_jet_constituent_dict["fromUp"], clipped_probe_jet_constituent_dict["fromBottom"]], axis=2)
 
     # Convert to tensors
@@ -153,7 +159,7 @@ def load_file(file):
     # Construct event tensor
     event_tensor_feats = torch.cat([probe_jet_feats, probe_jet_constituent_feats, lepton_feats, MET_feats, balance_jets_feats], dim=1)
 
-    return probe_jet_feats, probe_jet_constituent_feats, event_tensor_feats, top_labels, down_labels, direct_labels, track_labels
+    return probe_jet_feats, probe_jet_constituent_feats, event_tensor_feats, top_labels, down_labels, bottom_labels, direct_labels, track_labels
 
 if __name__=="__main__":
     tag = str(sys.argv[1])

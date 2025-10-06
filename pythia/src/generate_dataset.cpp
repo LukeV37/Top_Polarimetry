@@ -74,9 +74,12 @@ int main(int argc, char *argv[])
     float top_px, top_py, top_pz, top_e;
     float anti_top_px, anti_top_py, anti_top_pz, anti_top_e;
     float down_px, down_py, down_pz, down_e;
+    float bottom_px, bottom_py, bottom_pz, bottom_e;
     float top_px_boosted, top_py_boosted, top_pz_boosted, top_e_boosted;
     float down_px_boosted, down_py_boosted, down_pz_boosted, down_e_boosted;
-    float costheta;
+    float bottom_px_boosted, bottom_py_boosted, bottom_pz_boosted, bottom_e_boosted;
+    float costheta_down;
+    float costheta_bottom;
     TLorentzVector p_t, p_tbar, p_d;
 
     fastjet->Branch("lepton_pT", &lepton_pT);
@@ -112,7 +115,12 @@ int main(int argc, char *argv[])
     fastjet->Branch("truth_down_py_boosted", &down_py_boosted);
     fastjet->Branch("truth_down_pz_boosted", &down_pz_boosted);
     fastjet->Branch("truth_down_e_boosted", &down_e_boosted);
-    fastjet->Branch("costheta", &costheta);
+    fastjet->Branch("truth_bottom_px_boosted", &bottom_px_boosted);
+    fastjet->Branch("truth_bottom_py_boosted", &bottom_py_boosted);
+    fastjet->Branch("truth_bottom_pz_boosted", &bottom_pz_boosted);
+    fastjet->Branch("truth_bottom_e_boosted", &bottom_e_boosted);
+    fastjet->Branch("costheta_down", &costheta_down);
+    fastjet->Branch("costheta_bottom", &costheta_bottom);
 
     // Configure Jet parameters
     float pTmin_jet = 250; // GeV
@@ -188,12 +196,17 @@ int main(int argc, char *argv[])
         down_py = pythia.event[down_idx].py();
         down_pz = pythia.event[down_idx].pz();
         down_e = pythia.event[down_idx].e();
+        bottom_px = pythia.event[bottom_idx].px();
+        bottom_py = pythia.event[bottom_idx].py();
+        bottom_pz = pythia.event[bottom_idx].pz();
+        bottom_e = pythia.event[bottom_idx].e();
 
         p_t = TLorentzVector(top_px, top_py, top_pz, top_e);
         p_tbar = TLorentzVector(anti_top_px, anti_top_py, anti_top_pz, anti_top_e);
         p_d = TLorentzVector(down_px, down_py, down_pz, down_e);
 
-        costheta = calc_costheta(p_t, p_tbar, p_d, &top_px_boosted, &top_py_boosted, &top_pz_boosted, &top_e_boosted, &down_px_boosted, &down_py_boosted, &down_pz_boosted, &down_e_boosted);
+        costheta_down = calc_costheta(p_t, p_tbar, p_d, &top_px_boosted, &top_py_boosted, &top_pz_boosted, &top_e_boosted, &down_px_boosted, &down_py_boosted, &down_pz_boosted, &down_e_boosted);
+        costheta_bottom = calc_costheta(p_t, p_tbar, p_d, &top_px_boosted, &top_py_boosted, &top_pz_boosted, &top_e_boosted, &bottom_px_boosted, &bottom_py_boosted, &bottom_pz_boosted, &bottom_e_boosted);
 
         /*
         if (event_no==0){
