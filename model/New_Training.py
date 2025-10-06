@@ -23,10 +23,13 @@ starting_new = True
 continue_training = not starting_new
 
 # Loss parameters
-alpha = 1
-beta  = 1000000
-gamma = 100000
-delta = 1000000
+alpha   = 0
+beta    = 0
+gamma   = 0
+delta   = 100
+epsilon = 0
+
+zeta = 1
 
 batch_size=128
 
@@ -80,8 +83,9 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
                         
             top_loss      = MSE_loss_fn(top_pred, top_labels.to(device))
             down_loss     = MSE_loss_fn(down_pred, down_labels.to(device))
+            bottom_loss     = MSE_loss_fn(down_pred, bottom_labels.to(device))
             costheta_loss = MSE_loss_fn(direct_pred, direct_labels[:,0].reshape(-1,1).to(device))
-            #track_loss    = CCE_loss_fn(trk_output, track_labels.to(device))
+            track_loss    = CCE_loss_fn(track_pred, track_labels.to(device))
 
             # Convert pred to log probability and true to probability
             num_bins=20
@@ -112,7 +116,7 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
 
             down_kl_loss  = torch.nan_to_num(kl_loss(torch.log(prob_px), p_uniform) + kl_loss(torch.log(prob_py), p_uniform) + kl_loss(torch.log(prob_pz), p_uniform))
 
-            loss  = alpha*top_loss + beta*down_loss + gamma*costheta_loss + delta*down_kl_loss# + delta*track_loss
+            loss  = alpha*top_loss + beta*down_loss + gamma*costheta_loss + delta*bottom_loss + zeta*track_loss
 
             loss.backward()
             optimizer.step()
@@ -125,16 +129,19 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
         cumulative_loss_val = 0
         cumulative_loss_top_val = 0
         cumulative_loss_down_val = 0
+        cumulative_loss_bottom_val = 0
         cumulative_loss_direct_val = 0
         cumulative_loss_kl_val= 0
+        cumulative_loss_trk_val= 0
         num_val = len(val_loader)
         for probe_jet, constituents, event, top_labels, down_labels, bottom_labels, direct_labels, track_labels in val_loader:
             top_pred, down_pred, direct_pred, track_pred = model(probe_jet.to(device), constituents.to(device), event.to(device))
 
             top_loss      = MSE_loss_fn(top_pred, top_labels.to(device))
             down_loss     = MSE_loss_fn(down_pred, down_labels.to(device))
+            bottom_loss     = MSE_loss_fn(down_pred, bottom_labels.to(device))
             costheta_loss = MSE_loss_fn(direct_pred, direct_labels[:,0].reshape(-1,1).to(device))
-            #track_loss    = CCE_loss_fn(trk_output, track_labels.to(device))
+            track_loss    = CCE_loss_fn(track_pred, track_labels.to(device))
 
             # Convert pred to log probability and true to probability
             down_px_pred = down_pred[:,0]
@@ -163,19 +170,23 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
 
             down_kl_loss  = torch.nan_to_num(kl_loss(torch.log(prob_px), p_uniform) + kl_loss(torch.log(prob_py), p_uniform) + kl_loss(torch.log(prob_pz), p_uniform))
 
-            loss  = alpha*top_loss + beta*down_loss + gamma*costheta_loss + delta*down_kl_loss# + delta*track_loss
+            loss  = alpha*top_loss + beta*down_loss + gamma*costheta_loss + delta*bottom_loss + zeta*track_loss
 
             cumulative_loss_val+=loss.detach().cpu().numpy().mean()
             cumulative_loss_top_val+=top_loss.detach().cpu().numpy().mean()
             cumulative_loss_down_val+=down_loss.detach().cpu().numpy().mean()
+            cumulative_loss_bottom_val+=bottom_loss.detach().cpu().numpy().mean()
             cumulative_loss_direct_val+=costheta_loss.detach().cpu().numpy().mean()
             cumulative_loss_kl_val+=down_kl_loss.detach().cpu().numpy().mean()
+            cumulative_loss_trk_val+=track_loss.detach().cpu().numpy().mean()
         
         cumulative_loss_val = cumulative_loss_val / num_val
         cumulative_loss_top_val = alpha*cumulative_loss_top_val / num_val
         cumulative_loss_down_val = beta*cumulative_loss_down_val / num_val
         cumulative_loss_direct_val = gamma*cumulative_loss_direct_val / num_val
-        cumulative_loss_kl_val= delta*cumulative_loss_kl_val / num_val
+        cumulative_loss_bottom_val = delta*cumulative_loss_bottom_val / num_val
+        cumulative_loss_kl_val= epsilon*cumulative_loss_kl_val / num_val
+        cumulative_loss_trk_val= zeta*cumulative_loss_trk_val / num_val
         
         combined_history.append([cumulative_loss_train, cumulative_loss_val])
 
@@ -183,8 +194,10 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
             print('Epoch:',e+1,'\tTrain Loss:',round(cumulative_loss_train,6),'\tVal Loss:',round(cumulative_loss_val,6))
             print('\t\t\t\t\tTop Loss: ', round(cumulative_loss_top_val,6))
             print('\t\t\t\t\tDown Loss: ', round(cumulative_loss_down_val,6))
+            print('\t\t\t\t\tBottom Loss: ', round(cumulative_loss_bottom_val,6))
             print('\t\t\t\t\tDirect Loss: ', round(cumulative_loss_direct_val,6))
             print('\t\t\t\t\tKLDiv Loss: ', round(cumulative_loss_kl_val,6))
+            print('\t\t\t\t\tTrack Loss: ', round(cumulative_loss_trk_val,6))
 
         torch.save(model,dir_training+"/models/model_Epoch_"+str(e+1)+".torch")
             
@@ -238,9 +251,10 @@ for probe_jet, constituents, event, top_labels, down_labels, bottom_labels, dire
 
     top_loss     = MSE_loss_fn(top_pred, top_labels.to(device))
     down_loss     = MSE_loss_fn(down_pred, down_labels.to(device))
+    bottom_loss     = MSE_loss_fn(down_pred, bottom_labels.to(device))
     costheta_loss = MSE_loss_fn(direct_pred, direct_labels[:,0].reshape(-1,1).to(device))
-    #track_loss    = CCE_loss_fn(trk_output, track_labels.to(device))
-    loss  = alpha*top_loss + beta*down_loss + gamma*costheta_loss# + delta*down_kl_loss# + delta*track_loss
+    track_loss    = CCE_loss_fn(track_pred, track_labels.to(device))
+    loss  = alpha*top_loss + beta*down_loss + gamma*costheta_loss + delta*bottom_loss + zeta*track_loss
 
 def validate_predictions(true, pred, var_names):
     num_feats = len(var_names)
@@ -251,6 +265,9 @@ def validate_predictions(true, pred, var_names):
                    "down_px": (-1.1,1.1),
                    "down_py": (-1.1,1.1),
                    "down_pz": (-1.1,1.1),
+                   "bottom_px": (-1.1,1.1),
+                   "bottom_py": (-1.1,1.1),
+                   "bottom_pz": (-1.1,1.1),
                    "costheta": (-1.1,1.1)}
 
     for i ,var in enumerate(var_names):
@@ -282,5 +299,6 @@ def validate_predictions(true, pred, var_names):
         plt.close()
 
 validate_predictions(true_top, pred_top, ["top_px", "top_py", "top_pz", "top_e"])
-validate_predictions(true_down, pred_down, ["down_px", "down_py", "down_pz"])
+#validate_predictions(true_down, pred_down, ["down_px", "down_py", "down_pz"])
+validate_predictions(true_down, pred_down, ["bottom_px", "bottom_py", "bottom_pz"])
 validate_predictions(true_direct, pred_direct, ["costheta"])
