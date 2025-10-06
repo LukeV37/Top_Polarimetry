@@ -80,8 +80,7 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
                         
             top_loss      = MSE_loss_fn(top_pred, top_labels.to(device))
             down_loss     = MSE_loss_fn(down_pred, down_labels.to(device))
-            costheta_down_loss = MSE_loss_fn(direct_pred, direct_labels[:,0].reshape(-1,1).to(device))
-            costheta_bottom_loss = MSE_loss_fn(direct_pred, direct_labels[:,1].reshape(-1,1).to(device))
+            costheta_loss = MSE_loss_fn(direct_pred, direct_labels[:,0].reshape(-1,1).to(device))
             #track_loss    = CCE_loss_fn(trk_output, track_labels.to(device))
 
             # Convert pred to log probability and true to probability
@@ -113,7 +112,7 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
 
             down_kl_loss  = torch.nan_to_num(kl_loss(torch.log(prob_px), p_uniform) + kl_loss(torch.log(prob_py), p_uniform) + kl_loss(torch.log(prob_pz), p_uniform))
 
-            loss  = alpha*top_loss + beta*down_loss + gamma*costheta_down_loss + delta*down_kl_loss# + delta*track_loss
+            loss  = alpha*top_loss + beta*down_loss + gamma*costheta_loss + delta*down_kl_loss# + delta*track_loss
 
             loss.backward()
             optimizer.step()
@@ -134,8 +133,7 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
 
             top_loss      = MSE_loss_fn(top_pred, top_labels.to(device))
             down_loss     = MSE_loss_fn(down_pred, down_labels.to(device))
-            costheta_down_loss = MSE_loss_fn(direct_pred, direct_labels[:,0].reshape(-1,1).to(device))
-            costheta_bottom_loss = MSE_loss_fn(direct_pred, direct_labels[:,1].reshape(-1,1).to(device))
+            costheta_loss = MSE_loss_fn(direct_pred, direct_labels[:,0].reshape(-1,1).to(device))
             #track_loss    = CCE_loss_fn(trk_output, track_labels.to(device))
 
             # Convert pred to log probability and true to probability
@@ -165,12 +163,12 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
 
             down_kl_loss  = torch.nan_to_num(kl_loss(torch.log(prob_px), p_uniform) + kl_loss(torch.log(prob_py), p_uniform) + kl_loss(torch.log(prob_pz), p_uniform))
 
-            loss  = alpha*top_loss + beta*down_loss + gamma*costheta_down_loss + delta*down_kl_loss# + delta*track_loss
+            loss  = alpha*top_loss + beta*down_loss + gamma*costheta_loss + delta*down_kl_loss# + delta*track_loss
 
             cumulative_loss_val+=loss.detach().cpu().numpy().mean()
             cumulative_loss_top_val+=top_loss.detach().cpu().numpy().mean()
             cumulative_loss_down_val+=down_loss.detach().cpu().numpy().mean()
-            cumulative_loss_direct_val+=costheta_down_loss.detach().cpu().numpy().mean()
+            cumulative_loss_direct_val+=costheta_loss.detach().cpu().numpy().mean()
             cumulative_loss_kl_val+=down_kl_loss.detach().cpu().numpy().mean()
         
         cumulative_loss_val = cumulative_loss_val / num_val
@@ -240,10 +238,9 @@ for probe_jet, constituents, event, top_labels, down_labels, bottom_labels, dire
 
     top_loss     = MSE_loss_fn(top_pred, top_labels.to(device))
     down_loss     = MSE_loss_fn(down_pred, down_labels.to(device))
-    costheta_down_loss = MSE_loss_fn(direct_pred, direct_labels[:,0].reshape(-1,1).to(device))
-    costheta_bottom_loss = MSE_loss_fn(direct_pred, direct_labels[:,1].reshape(-1,1).to(device))
+    costheta_loss = MSE_loss_fn(direct_pred, direct_labels[:,0].reshape(-1,1).to(device))
     #track_loss    = CCE_loss_fn(trk_output, track_labels.to(device))
-    loss  = alpha*top_loss + beta*down_loss + gamma*costheta_down_loss# + delta*down_kl_loss# + delta*track_loss
+    loss  = alpha*top_loss + beta*down_loss + gamma*costheta_loss# + delta*down_kl_loss# + delta*track_loss
 
 def validate_predictions(true, pred, var_names):
     num_feats = len(var_names)
