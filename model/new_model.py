@@ -59,7 +59,7 @@ class Model(nn.Module):
         self.stackDown = Stack(self.embed_dim, self.num_heads)
 
         # Track Classification
-        #self.track_classification = nn.Linear(self.embed_dim, 3)
+        self.track_classification = nn.Linear(self.embed_dim, 3)
         
         # Kinematics Regression
         self.top_regression_input = nn.Linear(self.embed_dim, self.embed_dim)
@@ -90,7 +90,7 @@ class Model(nn.Module):
         event_embedding = event_embedding + event_embedding_NEW
 
         # Track Classificiation
-        #track_output = self.track_classification(probe_jet_constituent_embedding)
+        track_output = self.track_classification(probe_jet_constituent_embedding)
         
         # Top Encoder Stack
         probe_jet_embedding_NEW, probe_jet_constituent_embedding_NEW, event_embedding_NEW = self.stackTop(probe_jet_embedding,probe_jet_constituent_embedding,event_embedding)
@@ -117,4 +117,4 @@ class Model(nn.Module):
         costheta_output = F.gelu(self.direct_input(combined_output))
         costheta_output = self.direct_output(costheta_output)
         
-        return top_output, down_output, costheta_output, None
+        return top_output, down_output, costheta_output, track_output
