@@ -161,7 +161,37 @@ class Event:
             
     def write_ntuple(self, tag, num):
         with uproot.recreate("pp_tt_semi_full_"+tag+"/labels_"+tag+"_"+num+".root") as f:
-            f['labels'] = {"top_px": self.top_label.px,
+            tree = f.mktree("labels", {"top_px": "float32",
+                                       "top_py": "float32",
+                                       "top_pz": "float32",
+                                       "top_E": "float32",
+                                       "top_pT": "float32",
+                                       "top_eta": "float32",
+                                       "top_phi": "float32",
+                                       "down_px": "float32",
+                                       "down_py": "float32",
+                                       "down_pz": "float32",
+                                       "down_E": "float32",
+                                       "down_pT": "float32",
+                                       "down_eta": "float32",
+                                       "down_phi": "float32",
+                                       "down_deltaR": "float32",
+                                       "down_deltaEta": "float32",
+                                       "down_deltaPhi": "float32",
+                                       "bottom_px": "float32",
+                                       "bottom_py": "float32",
+                                       "bottom_pz": "float32",
+                                       "bottom_E": "float32",
+                                       "bottom_pT": "float32",
+                                       "bottom_eta": "float32",
+                                       "bottom_phi": "float32",
+                                       "bottom_deltaR": "float32",
+                                       "bottom_deltaEta": "float32",
+                                       "bottom_deltaPhi": "float32",
+                                       "costheta": "float32",
+                                       }
+                           )
+            tree.extend( {"top_px": self.top_label.px,
                           "top_py": self.top_label.py,
                           "top_pz": self.top_label.pz,
                           "top_E" : self.top_label.E,
@@ -190,7 +220,7 @@ class Event:
                           "bottom_deltaPhi" : self.b_label.deltaPhi,
                           "costheta": self.costheta
                          }
-            #f['labels'].show()
+                       )
 
 # Get dataset tag
 dataset_tag=str(sys.argv[1])
