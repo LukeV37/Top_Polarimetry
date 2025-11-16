@@ -86,18 +86,18 @@ def load_file(file):
         balance_jets_phi = f["balance_jets_phi"].array()
 
         # Output Labels
-        truth_top_px_boosted = f["truth_top_px_boosted"].array()
-        truth_top_py_boosted = f["truth_top_py_boosted"].array()
-        truth_top_pz_boosted = f["truth_top_pz_boosted"].array()
-        truth_top_e_boosted = f["truth_top_e_boosted"].array()
-        truth_down_px_boosted = f["truth_down_px_boosted"].array()
-        truth_down_py_boosted = f["truth_down_py_boosted"].array()
-        truth_down_pz_boosted = f["truth_down_pz_boosted"].array()
-        truth_costheta_down = f["costheta_down"].array()
-        truth_bottom_px_boosted = f["truth_bottom_px_boosted"].array()
-        truth_bottom_py_boosted = f["truth_bottom_py_boosted"].array()
-        truth_bottom_pz_boosted = f["truth_bottom_pz_boosted"].array()
-        truth_costheta_bottom = f["costheta_bottom"].array()
+        top_px = f["top_px_boost_ttCM"].array()
+        top_py = f["top_py_boost_ttCM"].array()
+        top_pz = f["top_pz_boost_ttCM"].array()
+        top_e  = f["top_e_boost_ttCM"].array()
+        down_px = f["down_px_lab"].array()
+        down_py = f["down_py_lab"].array()
+        down_pz = f["down_pz_lab"].array()
+        bottom_px = f["bottom_px_lab"].array()
+        bottom_py = f["bottom_py_lab"].array()
+        bottom_pz = f["bottom_pz_lab"].array()
+        costheta_down = f["costheta_down"].array()
+        costheta_bottom = f["costheta_bottom"].array()
 
         # Track Labels
         probe_jet_constituent_fromDown= f["probe_jet_constituent_fromDown"].array()
@@ -141,12 +141,12 @@ def load_file(file):
     balance_jets_feats = ak.fill_none(ak.pad_none(balance_jets_feats, common_feat_len, axis=2), 0)
 
     # Combine labels into single tensor
-    truth_down_px_norm, truth_down_py_norm, truth_down_pz_norm = get_norm(truth_down_px_boosted, truth_down_py_boosted, truth_down_pz_boosted)
-    truth_bottom_px_norm, truth_bottom_py_norm, truth_bottom_pz_norm = get_norm(truth_bottom_px_boosted, truth_bottom_py_boosted, truth_bottom_pz_boosted)
-    top_labels = combine_feats([truth_top_px_boosted, truth_top_py_boosted, truth_top_pz_boosted, truth_top_e_boosted], axis=1)
-    down_labels = combine_feats([truth_down_px_norm, truth_down_py_norm, truth_down_pz_norm], axis=1)
-    bottom_labels = combine_feats([truth_bottom_px_norm, truth_bottom_py_norm, truth_bottom_pz_norm], axis=1)
-    direct_labels = combine_feats([truth_costheta_down, truth_costheta_bottom], axis=1)
+    down_px_norm, down_py_norm, down_pz_norm = get_norm(down_px, down_py, down_pz)
+    bottom_px_norm, bottom_py_norm, bottom_pz_norm = get_norm(bottom_px, bottom_py, bottom_pz)
+    top_labels = combine_feats([top_px, top_py, top_pz, top_e], axis=1)
+    down_labels = combine_feats([down_px_norm, down_py_norm, down_pz_norm], axis=1)
+    bottom_labels = combine_feats([bottom_px_norm, bottom_py_norm, bottom_pz_norm], axis=1)
+    direct_labels = combine_feats([costheta_down, costheta_bottom], axis=1)
     track_labels = combine_feats([clipped_probe_jet_constituent_dict["fromDown"], clipped_probe_jet_constituent_dict["fromUp"], clipped_probe_jet_constituent_dict["fromBottom"]], axis=2)
 
     # Convert to tensors
