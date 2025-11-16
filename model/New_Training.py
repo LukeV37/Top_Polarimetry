@@ -17,21 +17,22 @@ embed_dim = int(sys.argv[3])
 dir_dataset = str(sys.argv[4])
 dir_training = str(sys.argv[5])
 
-dir_startingPoint = "WS_U_10M/training_klDiv_loss_20epoch_32embed"
+dir_startingPoint = "WS_U_10M/training_All_Task_LabFrame_Bottom_arctanh_80epoch_64embed"
 
-starting_new = True
+starting_new = False
 continue_training = not starting_new
 
 # Loss parameters
-alpha   = 0
-beta    = 0
-gamma   = 0
-delta   = 100
-epsilon = 0
+alpha   = 1       # Top Loss
+beta    = 0       # Down Loss
+gamma   = 1000       # Direct Loss
+delta   = 1000000       # Bottom Loss
+epsilon = 0       # KL Loss
 
-zeta = 1
+zeta = 0           # Track loss
 
-batch_size=128
+batch_size=256
+learning_rate=0.0001
 
 dset = torch.load(dir_dataset+"/dataset_combined.pt", weights_only=False)
 
@@ -54,7 +55,11 @@ if starting_new:
 if continue_training:
     model = torch.load(dir_startingPoint+"/model_final.torch",weights_only=False,map_location=torch.device(device))
 
-optimizer = optim.AdamW(model.parameters(), lr=0.0001)
+step_size=80
+gamma=0.1
+#optimizer = optim.AdamW(model.parameters(), lr=learning_rate)
+optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)
 
 MSE_loss_fn = nn.MSELoss()
 CCE_loss_fn = nn.CrossEntropyLoss()
@@ -64,7 +69,7 @@ print("Trainable Parameters :", sum(p.numel() for p in model.parameters() if p.r
 print("Number of Training Events: ", len(train_loader)*batch_size)
 
 for probe_jet, constituents, event, top_labels, down_labels, bottom_labels, direct_labels, track_labels in train_loader:
-    top_pred, down_pred, direct_pred, track_pred = model(probe_jet.to(device), constituents.to(device), event.to(device))
+    top_pred, quark_pred, direct_pred, track_pred = model(probe_jet.to(device), constituents.to(device), event.to(device))
     break
 
 def train(model, optimizer, train_loader, val_loader, epochs=40):
@@ -79,42 +84,16 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
         for probe_jet, constituents, event, top_labels, down_labels, bottom_labels, direct_labels, track_labels in train_loader:
             optimizer.zero_grad()
             
-            top_pred, down_pred, direct_pred, track_pred = model(probe_jet.to(device), constituents.to(device), event.to(device))
-                        
+            top_pred, quark_pred, direct_pred, track_pred = model(probe_jet.to(device), constituents.to(device), event.to(device))
+
+            bottom_labels = torch.atanh(bottom_labels * 0.999)
+            bottom_costheta = torch.atanh(direct_labels[:,1].reshape(-1,1))
+
             top_loss      = MSE_loss_fn(top_pred, top_labels.to(device))
-            down_loss     = MSE_loss_fn(down_pred, down_labels.to(device))
-            bottom_loss     = MSE_loss_fn(down_pred, bottom_labels.to(device))
-            costheta_loss = MSE_loss_fn(direct_pred, direct_labels[:,0].reshape(-1,1).to(device))
+            down_loss     = MSE_loss_fn(quark_pred, down_labels.to(device))
+            bottom_loss     = MSE_loss_fn(quark_pred, bottom_labels.to(device))
+            costheta_loss = MSE_loss_fn(direct_pred, bottom_costheta.to(device))
             track_loss    = CCE_loss_fn(track_pred, track_labels.to(device))
-
-            # Convert pred to log probability and true to probability
-            num_bins=20
-            bins = torch.linspace(-1, 1, num_bins+1, device=device)
-            down_px_pred = down_pred[:,0]
-            down_py_pred = down_pred[:,1]
-            down_pz_pred = down_pred[:,2]
-
-            # Create histogram of output predictions
-            hist_px = torch.histc(down_px_pred, bins=num_bins, min=-1, max=1)
-            hist_py = torch.histc(down_py_pred, bins=num_bins, min=-1, max=1)
-            hist_pz = torch.histc(down_pz_pred, bins=num_bins, min=-1, max=1)
-
-            # Normalize output predictions to probability
-            prob_px = hist_px / hist_px.sum()
-            prob_py = hist_py / hist_py.sum()
-            prob_pz = hist_pz / hist_pz.sum()
-
-            # Avoid zero for log computation
-            prob_px = prob_px + 1e-8
-            prob_py = prob_py + 1e-8
-            prob_pz = prob_pz + 1e-8
-            prob_px = prob_px / prob_px.sum()
-            prob_py = prob_py / prob_py.sum()
-            prob_pz = prob_pz / prob_pz.sum()
-
-            p_uniform = torch.full_like(prob_px, 1.0 / num_bins)
-
-            down_kl_loss  = torch.nan_to_num(kl_loss(torch.log(prob_px), p_uniform) + kl_loss(torch.log(prob_py), p_uniform) + kl_loss(torch.log(prob_pz), p_uniform))
 
             loss  = alpha*top_loss + beta*down_loss + gamma*costheta_loss + delta*bottom_loss + zeta*track_loss
 
@@ -131,44 +110,19 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
         cumulative_loss_down_val = 0
         cumulative_loss_bottom_val = 0
         cumulative_loss_direct_val = 0
-        cumulative_loss_kl_val= 0
         cumulative_loss_trk_val= 0
         num_val = len(val_loader)
         for probe_jet, constituents, event, top_labels, down_labels, bottom_labels, direct_labels, track_labels in val_loader:
-            top_pred, down_pred, direct_pred, track_pred = model(probe_jet.to(device), constituents.to(device), event.to(device))
+            top_pred, quark_pred, direct_pred, track_pred = model(probe_jet.to(device), constituents.to(device), event.to(device))
+
+            bottom_labels = torch.atanh(bottom_labels * 0.999)
+            bottom_costheta = torch.atanh(direct_labels[:,1].reshape(-1,1))
 
             top_loss      = MSE_loss_fn(top_pred, top_labels.to(device))
-            down_loss     = MSE_loss_fn(down_pred, down_labels.to(device))
-            bottom_loss     = MSE_loss_fn(down_pred, bottom_labels.to(device))
-            costheta_loss = MSE_loss_fn(direct_pred, direct_labels[:,0].reshape(-1,1).to(device))
+            down_loss     = MSE_loss_fn(quark_pred, down_labels.to(device))
+            bottom_loss     = MSE_loss_fn(quark_pred, bottom_labels.to(device))
+            costheta_loss = MSE_loss_fn(direct_pred, bottom_costheta.to(device))
             track_loss    = CCE_loss_fn(track_pred, track_labels.to(device))
-
-            # Convert pred to log probability and true to probability
-            down_px_pred = down_pred[:,0]
-            down_py_pred = down_pred[:,1]
-            down_pz_pred = down_pred[:,2]
-
-            # Create histogram of output predictions
-            hist_px = torch.histc(down_px_pred, bins=num_bins, min=-1, max=1)
-            hist_py = torch.histc(down_py_pred, bins=num_bins, min=-1, max=1)
-            hist_pz = torch.histc(down_pz_pred, bins=num_bins, min=-1, max=1)
-
-            # Normalize output predictions to probability
-            prob_px = hist_px / hist_px.sum()
-            prob_py = hist_py / hist_py.sum()
-            prob_pz = hist_pz / hist_pz.sum()
-
-            # Avoid zero for log computation
-            prob_px = prob_px + 1e-8
-            prob_py = prob_py + 1e-8
-            prob_pz = prob_pz + 1e-8
-            prob_px = prob_px / prob_px.sum()
-            prob_py = prob_py / prob_py.sum()
-            prob_pz = prob_pz / prob_pz.sum()
-
-            p_uniform = torch.full_like(prob_px, 1.0 / num_bins)
-
-            down_kl_loss  = torch.nan_to_num(kl_loss(torch.log(prob_px), p_uniform) + kl_loss(torch.log(prob_py), p_uniform) + kl_loss(torch.log(prob_pz), p_uniform))
 
             loss  = alpha*top_loss + beta*down_loss + gamma*costheta_loss + delta*bottom_loss + zeta*track_loss
 
@@ -177,7 +131,6 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
             cumulative_loss_down_val+=down_loss.detach().cpu().numpy().mean()
             cumulative_loss_bottom_val+=bottom_loss.detach().cpu().numpy().mean()
             cumulative_loss_direct_val+=costheta_loss.detach().cpu().numpy().mean()
-            cumulative_loss_kl_val+=down_kl_loss.detach().cpu().numpy().mean()
             cumulative_loss_trk_val+=track_loss.detach().cpu().numpy().mean()
         
         cumulative_loss_val = cumulative_loss_val / num_val
@@ -185,10 +138,11 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
         cumulative_loss_down_val = beta*cumulative_loss_down_val / num_val
         cumulative_loss_direct_val = gamma*cumulative_loss_direct_val / num_val
         cumulative_loss_bottom_val = delta*cumulative_loss_bottom_val / num_val
-        cumulative_loss_kl_val= epsilon*cumulative_loss_kl_val / num_val
         cumulative_loss_trk_val= zeta*cumulative_loss_trk_val / num_val
         
         combined_history.append([cumulative_loss_train, cumulative_loss_val])
+
+        scheduler.step()
 
         if e%1==0:
             print('Epoch:',e+1,'\tTrain Loss:',round(cumulative_loss_train,6),'\tVal Loss:',round(cumulative_loss_val,6))
@@ -196,7 +150,6 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
             print('\t\t\t\t\tDown Loss: ', round(cumulative_loss_down_val,6))
             print('\t\t\t\t\tBottom Loss: ', round(cumulative_loss_bottom_val,6))
             print('\t\t\t\t\tDirect Loss: ', round(cumulative_loss_direct_val,6))
-            print('\t\t\t\t\tKLDiv Loss: ', round(cumulative_loss_kl_val,6))
             print('\t\t\t\t\tTrack Loss: ', round(cumulative_loss_trk_val,6))
 
         torch.save(model,dir_training+"/models/model_Epoch_"+str(e+1)+".torch")
@@ -229,32 +182,28 @@ top_feats=4
 pred_top = np.array([]).reshape(0,top_feats)
 true_top = np.array([]).reshape(0,top_feats)
 
-down_feats=3
-pred_down = np.array([]).reshape(0,down_feats)
-true_down = np.array([]).reshape(0,down_feats)
+quark_feats=3
+pred_quark = np.array([]).reshape(0,quark_feats)
+true_quark = np.array([]).reshape(0,quark_feats)
 
 direct_feats=1
 pred_direct = np.array([]).reshape(0,direct_feats)
 true_direct = np.array([]).reshape(0,direct_feats)
 
 for probe_jet, constituents, event, top_labels, down_labels, bottom_labels, direct_labels, track_labels in test_loader:
-    top_pred, down_pred, direct_pred, track_pred = model(probe_jet.to(device), constituents.to(device), event.to(device))
+    top_pred, quark_pred, direct_pred, track_pred = model(probe_jet.to(device), constituents.to(device), event.to(device))
+
+    quark_pred = torch.tanh(quark_pred)
+    direct_pred = torch.tanh(direct_pred)
 
     pred_top = np.vstack((pred_top,top_pred.detach().cpu().numpy()))
     true_top = np.vstack((true_top,top_labels.detach().cpu().numpy()))
 
-    pred_down = np.vstack((pred_down,down_pred.detach().cpu().numpy()))
-    true_down = np.vstack((true_down,down_labels.detach().cpu().numpy()))
+    pred_quark = np.vstack((pred_quark,quark_pred.detach().cpu().numpy()))
+    true_quark = np.vstack((true_quark,bottom_labels.detach().cpu().numpy()))
 
     pred_direct = np.vstack((pred_direct,direct_pred.detach().cpu().numpy()))
-    true_direct = np.vstack((true_direct,direct_labels[:,0].reshape(-1,1).detach().cpu().numpy()))
-
-    top_loss     = MSE_loss_fn(top_pred, top_labels.to(device))
-    down_loss     = MSE_loss_fn(down_pred, down_labels.to(device))
-    bottom_loss     = MSE_loss_fn(down_pred, bottom_labels.to(device))
-    costheta_loss = MSE_loss_fn(direct_pred, direct_labels[:,0].reshape(-1,1).to(device))
-    track_loss    = CCE_loss_fn(track_pred, track_labels.to(device))
-    loss  = alpha*top_loss + beta*down_loss + gamma*costheta_loss + delta*bottom_loss + zeta*track_loss
+    true_direct = np.vstack((true_direct,direct_labels[:,1].reshape(-1,1).detach().cpu().numpy()))
 
 def validate_predictions(true, pred, var_names):
     num_feats = len(var_names)
@@ -300,5 +249,5 @@ def validate_predictions(true, pred, var_names):
 
 validate_predictions(true_top, pred_top, ["top_px", "top_py", "top_pz", "top_e"])
 #validate_predictions(true_down, pred_down, ["down_px", "down_py", "down_pz"])
-validate_predictions(true_down, pred_down, ["bottom_px", "bottom_py", "bottom_pz"])
+validate_predictions(true_quark, pred_quark, ["bottom_px", "bottom_py", "bottom_pz"])
 validate_predictions(true_direct, pred_direct, ["costheta"])
