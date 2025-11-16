@@ -16,7 +16,6 @@
 
 #include "include/estimate_ip.h"
 #include "include/traverse_history.h"
-#include "include/calc_labels.h"
 #include "include/isolated_lepton.h"
 #include "include/get_MET.h"
 #include "include/remove_particles_from_clustering.h"
@@ -70,18 +69,19 @@ int main(int argc, char *argv[])
     std::vector<float> balance_jets_pT;
     std::vector<float> balance_jets_eta;
     std::vector<float> balance_jets_phi;
-    float truth_top_pT, truth_top_eta, truth_top_phi;
     float top_px, top_py, top_pz, top_e;
     float anti_top_px, anti_top_py, anti_top_pz, anti_top_e;
     float down_px, down_py, down_pz, down_e;
     float bottom_px, bottom_py, bottom_pz, bottom_e;
-    float top_px_boosted, top_py_boosted, top_pz_boosted, top_e_boosted;
-    float down_px_boosted, down_py_boosted, down_pz_boosted, down_e_boosted;
-    float bottom_px_boosted, bottom_py_boosted, bottom_pz_boosted, bottom_e_boosted;
+    float top_px_boost_ttCM, top_py_boost_ttCM, top_pz_boost_ttCM, top_e_boost_ttCM;
+    float down_px_boost_ttCM, down_py_boost_ttCM, down_pz_boost_ttCM, down_e_boost_ttCM;
+    float bottom_px_boost_ttCM, bottom_py_boost_ttCM, bottom_pz_boost_ttCM, bottom_e_boost_ttCM;
+    float down_px_boost_tRest, down_py_boost_tRest, down_pz_boost_tRest, down_e_boost_tRest;
+    float bottom_px_boost_tRest, bottom_py_boost_tRest, bottom_pz_boost_tRest, bottom_e_boost_tRest;
     float costheta_down;
     float costheta_bottom;
-    TLorentzVector p_t, p_tbar, p_d, p_b;
 
+    // Features
     fastjet->Branch("lepton_pT", &lepton_pT);
     fastjet->Branch("lepton_eta", &lepton_eta);
     fastjet->Branch("lepton_phi", &lepton_phi);
@@ -104,21 +104,39 @@ int main(int argc, char *argv[])
     fastjet->Branch("balance_jets_pT", &balance_jets_pT);
     fastjet->Branch("balance_jets_eta", &balance_jets_eta);
     fastjet->Branch("balance_jets_phi", &balance_jets_phi);
-    fastjet->Branch("truth_top_pT", &truth_top_pT);
-    fastjet->Branch("truth_top_eta", &truth_top_eta);
-    fastjet->Branch("truth_top_phi", &truth_top_phi);
-    fastjet->Branch("truth_top_px_boosted", &top_px_boosted);
-    fastjet->Branch("truth_top_py_boosted", &top_py_boosted);
-    fastjet->Branch("truth_top_pz_boosted", &top_pz_boosted);
-    fastjet->Branch("truth_top_e_boosted", &top_e_boosted);
-    fastjet->Branch("truth_down_px_boosted", &down_px_boosted);
-    fastjet->Branch("truth_down_py_boosted", &down_py_boosted);
-    fastjet->Branch("truth_down_pz_boosted", &down_pz_boosted);
-    fastjet->Branch("truth_down_e_boosted", &down_e_boosted);
-    fastjet->Branch("truth_bottom_px_boosted", &bottom_px_boosted);
-    fastjet->Branch("truth_bottom_py_boosted", &bottom_py_boosted);
-    fastjet->Branch("truth_bottom_pz_boosted", &bottom_pz_boosted);
-    fastjet->Branch("truth_bottom_e_boosted", &bottom_e_boosted);
+    // Labels
+    fastjet->Branch("top_px_lab", &top_px);
+    fastjet->Branch("top_py_lab", &top_py);
+    fastjet->Branch("top_pz_lab", &top_pz);
+    fastjet->Branch("top_e_lab", &top_e);
+    fastjet->Branch("down_px_lab", &down_px);
+    fastjet->Branch("down_py_lab", &down_py);
+    fastjet->Branch("down_pz_lab", &down_pz);
+    fastjet->Branch("down_e_lab", &down_e);
+    fastjet->Branch("bottom_px_lab", &bottom_px);
+    fastjet->Branch("bottom_py_lab", &bottom_py);
+    fastjet->Branch("bottom_pz_lab", &bottom_pz);
+    fastjet->Branch("bottom_e_lab", &bottom_e);
+    fastjet->Branch("top_px_boost_ttCM", &top_px_boost_ttCM);
+    fastjet->Branch("top_py_boost_ttCM", &top_py_boost_ttCM);
+    fastjet->Branch("top_pz_boost_ttCM", &top_pz_boost_ttCM);
+    fastjet->Branch("top_e_boost_ttCM", &top_e_boost_ttCM);
+    fastjet->Branch("down_px_boost_ttCM", &down_px_boost_ttCM);
+    fastjet->Branch("down_py_boost_ttCM", &down_py_boost_ttCM);
+    fastjet->Branch("down_pz_boost_ttCM", &down_pz_boost_ttCM);
+    fastjet->Branch("down_e_boost_ttCM", &down_e_boost_ttCM);
+    fastjet->Branch("bottom_px_boost_ttCM", &bottom_px_boost_ttCM);
+    fastjet->Branch("bottom_py_boost_ttCM", &bottom_py_boost_ttCM);
+    fastjet->Branch("bottom_pz_boost_ttCM", &bottom_pz_boost_ttCM);
+    fastjet->Branch("bottom_e_boost_ttCM", &bottom_e_boost_ttCM);
+    fastjet->Branch("down_px_boost_tRest", &down_px_boost_tRest);
+    fastjet->Branch("down_py_boost_tRest", &down_py_boost_tRest);
+    fastjet->Branch("down_pz_boost_tRest", &down_pz_boost_tRest);
+    fastjet->Branch("down_e_boost_tRest", &down_e_boost_tRest);
+    fastjet->Branch("bottom_px_boost_tRest", &bottom_px_boost_tRest);
+    fastjet->Branch("bottom_py_boost_tRest", &bottom_py_boost_tRest);
+    fastjet->Branch("bottom_pz_boost_tRest", &bottom_pz_boost_tRest);
+    fastjet->Branch("bottom_e_boost_tRest", &bottom_e_boost_tRest);
     fastjet->Branch("costheta_down", &costheta_down);
     fastjet->Branch("costheta_bottom", &costheta_bottom);
 
@@ -201,14 +219,6 @@ int main(int argc, char *argv[])
         bottom_pz = pythia.event[bottom_idx].pz();
         bottom_e = pythia.event[bottom_idx].e();
 
-        p_t = TLorentzVector(top_px, top_py, top_pz, top_e);
-        p_tbar = TLorentzVector(anti_top_px, anti_top_py, anti_top_pz, anti_top_e);
-        p_d = TLorentzVector(down_px, down_py, down_pz, down_e);
-        p_b = TLorentzVector(bottom_px, bottom_py, bottom_pz, bottom_e);
-
-        costheta_down = calc_costheta(p_t, p_tbar, p_d, &top_px_boosted, &top_py_boosted, &top_pz_boosted, &top_e_boosted, &down_px_boosted, &down_py_boosted, &down_pz_boosted, &down_e_boosted);
-        costheta_bottom = calc_costheta(p_t, p_tbar, p_b, &top_px_boosted, &top_py_boosted, &top_pz_boosted, &top_e_boosted, &bottom_px_boosted, &bottom_py_boosted, &bottom_pz_boosted, &bottom_e_boosted);
-
         /*
         if (event_no==0){
             std::cout << "top_idx: " << top_idx << std::endl;
@@ -222,6 +232,71 @@ int main(int argc, char *argv[])
             event_no++;
         }
         */
+
+        TLorentzVector p_t, p_tbar, p_d, p_b;
+        p_t = TLorentzVector(top_px, top_py, top_pz, top_e);
+        p_tbar = TLorentzVector(anti_top_px, anti_top_py, anti_top_pz, anti_top_e);
+        p_d = TLorentzVector(down_px, down_py, down_pz, down_e);
+        p_b = TLorentzVector(bottom_px, bottom_py, bottom_pz, bottom_e);
+
+        TVector3 to_ttbar_rest;
+        TVector3 to_t_rest;
+        TVector3 k_vect;
+        TVector3 d_vect;
+        TVector3 b_vect;
+
+        // Construct Lorentz boost to t-tbar CM frame
+        to_ttbar_rest = -(p_t + p_tbar).BoostVector();
+
+        // Boost vectors to t-tbar CM frame
+        p_t.Boost(to_ttbar_rest);
+        p_tbar.Boost(to_ttbar_rest);
+        p_d.Boost(to_ttbar_rest);
+        p_b.Boost(to_ttbar_rest);
+
+        // Store kinematics in t-tbar CM frame
+        top_px_boost_ttCM = p_t.Px();
+        top_py_boost_ttCM = p_t.Py();
+        top_pz_boost_ttCM = p_t.Pz();
+        top_e_boost_ttCM = p_t.E();
+        down_px_boost_ttCM = p_d.Px();
+        down_py_boost_ttCM = p_d.Py();
+        down_pz_boost_ttCM = p_d.Pz();
+        down_e_boost_ttCM = p_d.E();
+        bottom_px_boost_ttCM = p_b.Px();
+        bottom_py_boost_ttCM = p_b.Py();
+        bottom_pz_boost_ttCM = p_b.Pz();
+        bottom_e_boost_ttCM = p_b.E();
+
+        // Top quark unit vector in t-tbar CM frame
+        k_vect = p_t.Vect().Unit();
+
+        // Construct Lorentz boos to top quark rest frame
+        to_t_rest = -p_t.BoostVector();
+
+        // Boost quarks to top quark rest frame
+        p_d.Boost(to_t_rest);
+        p_b.Boost(to_t_rest);
+
+        // Store labels in top rest frame
+        down_px_boost_tRest = p_d.Px();
+        down_py_boost_tRest = p_d.Py();
+        down_pz_boost_tRest = p_d.Pz();
+        down_e_boost_tRest = p_d.E();
+        bottom_px_boost_tRest = p_b.Px();
+        bottom_py_boost_tRest = p_b.Py();
+        bottom_pz_boost_tRest = p_b.Pz();
+        bottom_e_boost_tRest = p_b.E();
+
+        // Calc unit vector in top rest frame
+        d_vect = p_d.Vect().Unit();
+        b_vect = p_b.Vect().Unit();
+
+        // Calc dot product for cos theta
+        costheta_down = k_vect.Dot(d_vect);
+        costheta_bottom = k_vect.Dot(b_vect);
+
+        // START ANALYSIS SELECTIONS
 
         // Initialize vector for fastjet clustering and particle index
         std::vector<fastjet::PseudoJet> fastjet_particles;
@@ -377,12 +452,6 @@ int main(int argc, char *argv[])
             balance_jets_eta.push_back(jet.eta());
             balance_jets_phi.push_back(jet.phi());
         }
-
-        // Store truth top kinematics
-        fastjet::PseudoJet truth_top(top_px, top_py, top_pz, top_e);
-        truth_top_pT = truth_top.pt();
-        truth_top_eta = truth_top.eta();
-        truth_top_phi = truth_top.phi();
 
         // Fill ROOT file
         fastjet->Fill();
