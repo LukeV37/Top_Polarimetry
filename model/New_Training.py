@@ -19,7 +19,7 @@ dir_training = str(sys.argv[5])
 
 dir_startingPoint = "WS_U_10M/training_All_Task_LabFrame_Bottom_arctanh_80epoch_64embed"
 
-starting_new = False
+starting_new = True
 continue_training = not starting_new
 
 # Loss parameters
@@ -55,7 +55,7 @@ if starting_new:
 if continue_training:
     model = torch.load(dir_startingPoint+"/model_final.torch",weights_only=False,map_location=torch.device(device))
 
-step_size=80
+step_size=160
 gamma=0.1
 #optimizer = optim.AdamW(model.parameters(), lr=learning_rate)
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
