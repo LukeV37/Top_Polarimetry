@@ -17,7 +17,7 @@ embed_dim = int(sys.argv[3])
 dir_dataset = str(sys.argv[4])
 dir_training = str(sys.argv[5])
 
-dir_startingPoint = "WS_U_10M/training_All_Task_LabFrame_Bottom_arctanh_80epoch_64embed"
+dir_startingPoint = "WS_U_10M/training_All_Task_Boost_tRest_Bottom_cosSim_140epoch_64embed"
 
 starting_new = True
 continue_training = not starting_new
@@ -55,12 +55,18 @@ if starting_new:
 if continue_training:
     model = torch.load(dir_startingPoint+"/model_final.torch",weights_only=False,map_location=torch.device(device))
 
-step_size=160
+step_size=100
 gamma=0.1
 #optimizer = optim.AdamW(model.parameters(), lr=learning_rate)
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)
 
+def calc_norm(y_pred):
+    norm = torch.sqrt(torch.sum(torch.square(y_pred), dim=1)).reshape(-1,1)
+    y_pred_norm = torch.div(y_pred, norm)
+    return y_pred_norm
+
+cosSim_loss_fn = nn.CosineEmbeddingLoss()
 MSE_loss_fn = nn.MSELoss()
 CCE_loss_fn = nn.CrossEntropyLoss()
 kl_loss     = nn.KLDivLoss(reduction="batchmean")
@@ -86,12 +92,14 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
             
             top_pred, quark_pred, direct_pred, track_pred = model(probe_jet.to(device), constituents.to(device), event.to(device))
 
-            bottom_labels = torch.atanh(bottom_labels * 0.999)
-            bottom_costheta = torch.atanh(direct_labels[:,1].reshape(-1,1))
+            quark_pred = calc_norm(quark_pred)
+            #bottom_costheta = torch.atanh(direct_labels[:,1].reshape(-1,1))
+            bottom_costheta = direct_labels[:,1].reshape(-1,1)
+            cos_target = torch.ones(quark_pred.shape[0]).to(device)
 
             top_loss      = MSE_loss_fn(top_pred, top_labels.to(device))
-            down_loss     = MSE_loss_fn(quark_pred, down_labels.to(device))
-            bottom_loss     = MSE_loss_fn(quark_pred, bottom_labels.to(device))
+            down_loss     = cosSim_loss_fn(quark_pred, down_labels.to(device), cos_target)
+            bottom_loss     = cosSim_loss_fn(quark_pred, bottom_labels.to(device), cos_target)
             costheta_loss = MSE_loss_fn(direct_pred, bottom_costheta.to(device))
             track_loss    = CCE_loss_fn(track_pred, track_labels.to(device))
 
@@ -115,12 +123,14 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
         for probe_jet, constituents, event, top_labels, down_labels, bottom_labels, direct_labels, track_labels in val_loader:
             top_pred, quark_pred, direct_pred, track_pred = model(probe_jet.to(device), constituents.to(device), event.to(device))
 
-            bottom_labels = torch.atanh(bottom_labels * 0.999)
-            bottom_costheta = torch.atanh(direct_labels[:,1].reshape(-1,1))
+            quark_pred = calc_norm(quark_pred)
+            #bottom_costheta = torch.atanh(direct_labels[:,1].reshape(-1,1))
+            bottom_costheta = direct_labels[:,1].reshape(-1,1)
+            cos_target = torch.ones(quark_pred.shape[0]).to(device)
 
             top_loss      = MSE_loss_fn(top_pred, top_labels.to(device))
-            down_loss     = MSE_loss_fn(quark_pred, down_labels.to(device))
-            bottom_loss     = MSE_loss_fn(quark_pred, bottom_labels.to(device))
+            down_loss     = cosSim_loss_fn(quark_pred, down_labels.to(device), cos_target)
+            bottom_loss     = cosSim_loss_fn(quark_pred, bottom_labels.to(device), cos_target)
             costheta_loss = MSE_loss_fn(direct_pred, bottom_costheta.to(device))
             track_loss    = CCE_loss_fn(track_pred, track_labels.to(device))
 
@@ -193,8 +203,8 @@ true_direct = np.array([]).reshape(0,direct_feats)
 for probe_jet, constituents, event, top_labels, down_labels, bottom_labels, direct_labels, track_labels in test_loader:
     top_pred, quark_pred, direct_pred, track_pred = model(probe_jet.to(device), constituents.to(device), event.to(device))
 
-    quark_pred = torch.tanh(quark_pred)
-    direct_pred = torch.tanh(direct_pred)
+    quark_pred = calc_norm(quark_pred)
+    #direct_pred = torch.tanh(direct_pred)
 
     pred_top = np.vstack((pred_top,top_pred.detach().cpu().numpy()))
     true_top = np.vstack((true_top,top_labels.detach().cpu().numpy()))
