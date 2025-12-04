@@ -63,13 +63,11 @@ class Model(nn.Module):
         self.track_classification = nn.Linear(self.embed_dim, 3)
         
         # Kinematics Regression
-        self.top_regression_input = nn.Linear(self.embed_dim, self.embed_dim)
         self.top_regression = nn.Linear(self.embed_dim, 4)
-        self.quark_regression_input = nn.Linear(self.embed_dim, self.embed_dim)
         self.quark_regression = nn.Linear(self.embed_dim, 3)
 
         # Direct regression
-        self.direct_input = nn.Linear(7, self.embed_dim)
+        self.direct_input = nn.Linear(self.embed_dim*2, self.embed_dim)
         self.direct_output = nn.Linear(self.embed_dim, 1)
 
     def forward(self, probe_jet, probe_jet_constituent, event_tensor):
@@ -110,16 +108,14 @@ class Model(nn.Module):
         probe_jet_embedding_Quark = torch.squeeze(probe_jet_embedding_Quark,1)
         
         # Get Top output
-        top_kinematics = F.gelu(self.top_regression_input(probe_jet_embedding_Top))
-        top_output = self.top_regression(top_kinematics)
+        top_output = self.top_regression(probe_jet_embedding_Top)
         
         # Get Down output
-        quark_kinematics = F.gelu(self.quark_regression_input(probe_jet_embedding_Quark))
-        quark_output = self.quark_regression(quark_kinematics)
+        quark_output = self.quark_regression(probe_jet_embedding_Quark)
 
         # Get Direct output
-        combined_output = torch.cat([top_output,quark_output], axis=1)
+        combined_output = torch.cat([probe_jet_embedding_Top,probe_jet_embedding_Quark], axis=1)
         costheta_output = F.gelu(self.direct_input(combined_output))
-        costheta_output = self.direct_output(costheta_output)
+        costheta_output = F.tanh(self.direct_output(costheta_output))
         
         return top_output, quark_output, costheta_output, track_output
