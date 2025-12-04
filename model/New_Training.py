@@ -25,8 +25,8 @@ continue_training = not starting_new
 # Loss parameters
 alpha   = 1       # Top Loss
 beta    = 0       # Down Loss
-gamma   = 1000       # Direct Loss
-delta   = 1000000       # Bottom Loss
+gamma   = 1e4       # Direct Loss
+delta   = 1e6       # Bottom Loss
 epsilon = 0       # KL Loss
 
 zeta = 0           # Track loss
@@ -56,10 +56,10 @@ if continue_training:
     model = torch.load(dir_startingPoint+"/model_final.torch",weights_only=False,map_location=torch.device(device))
 
 step_size=100
-gamma=0.1
+Gamma=0.1
 #optimizer = optim.AdamW(model.parameters(), lr=learning_rate)
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)
+scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=Gamma)
 
 def calc_norm(y_pred):
     norm = torch.sqrt(torch.sum(torch.square(y_pred), dim=1)).reshape(-1,1)
@@ -100,7 +100,7 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
             top_loss      = MSE_loss_fn(top_pred, top_labels.to(device))
             down_loss     = cosSim_loss_fn(quark_pred, down_labels.to(device), cos_target)
             bottom_loss     = cosSim_loss_fn(quark_pred, bottom_labels.to(device), cos_target)
-            costheta_loss = MSE_loss_fn(direct_pred, bottom_costheta.to(device))
+            costheta_loss = cosSim_loss_fn(direct_pred, bottom_costheta.to(device), cos_target)
             track_loss    = CCE_loss_fn(track_pred, track_labels.to(device))
 
             loss  = alpha*top_loss + beta*down_loss + gamma*costheta_loss + delta*bottom_loss + zeta*track_loss
@@ -131,7 +131,7 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
             top_loss      = MSE_loss_fn(top_pred, top_labels.to(device))
             down_loss     = cosSim_loss_fn(quark_pred, down_labels.to(device), cos_target)
             bottom_loss     = cosSim_loss_fn(quark_pred, bottom_labels.to(device), cos_target)
-            costheta_loss = MSE_loss_fn(direct_pred, bottom_costheta.to(device))
+            costheta_loss = cosSim_loss_fn(direct_pred, bottom_costheta.to(device), cos_target)
             track_loss    = CCE_loss_fn(track_pred, track_labels.to(device))
 
             loss  = alpha*top_loss + beta*down_loss + gamma*costheta_loss + delta*bottom_loss + zeta*track_loss
