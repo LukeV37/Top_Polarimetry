@@ -68,7 +68,7 @@ class Model(nn.Module):
 
         # Direct regression
         self.direct_input = nn.Linear(self.embed_dim*2, self.embed_dim)
-        self.direct_output = nn.Linear(self.embed_dim, 1)
+        self.direct_output = nn.Linear(self.embed_dim, 2)
 
     def forward(self, probe_jet, probe_jet_constituent, event_tensor):
         
