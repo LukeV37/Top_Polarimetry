@@ -116,6 +116,6 @@ class Model(nn.Module):
         # Get Direct output
         combined_output = torch.cat([probe_jet_embedding_Top,probe_jet_embedding_Quark], axis=1)
         costheta_output = F.gelu(self.direct_input(combined_output))
-        costheta_output = F.tanh(self.direct_output(costheta_output))
+        costheta_output = self.direct_output(costheta_output)
         
         return top_output, quark_output, costheta_output, track_output
