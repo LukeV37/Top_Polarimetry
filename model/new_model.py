@@ -56,18 +56,18 @@ class Model(nn.Module):
         self.stack1 = Stack(self.embed_dim, self.num_heads)
         self.stack2 = Stack(self.embed_dim, self.num_heads)
         self.stackTop = Stack(self.embed_dim, self.num_heads)
-        self.stackQuark1 = Stack(self.embed_dim, self.num_heads)
-        self.stackQuark2 = Stack(self.embed_dim, self.num_heads)
+        #self.stackQuark1 = Stack(self.embed_dim, self.num_heads)
+        #self.stackQuark2 = Stack(self.embed_dim, self.num_heads)
 
         # Track Classification
-        self.track_classification = nn.Linear(self.embed_dim, 3)
+        #self.track_classification = nn.Linear(self.embed_dim, 3)
         
         # Kinematics Regression
-        self.top_regression = nn.Linear(self.embed_dim, 4)
-        self.quark_regression = nn.Linear(self.embed_dim, 3)
+        #self.top_regression = nn.Linear(self.embed_dim, 4)
+        #self.quark_regression = nn.Linear(self.embed_dim, 3)
 
         # Direct regression
-        self.direct_input = nn.Linear(self.embed_dim*2, self.embed_dim)
+        #self.direct_input = nn.Linear(self.embed_dim*2, self.embed_dim)
         self.direct_output = nn.Linear(self.embed_dim, 2)
 
     def forward(self, probe_jet, probe_jet_constituent, event_tensor):
@@ -89,33 +89,34 @@ class Model(nn.Module):
         event_embedding = event_embedding + event_embedding_NEW
 
         # Track Classificiation
-        track_output = self.track_classification(probe_jet_constituent_embedding)
+        #track_output = self.track_classification(probe_jet_constituent_embedding)
         
         # Top Encoder Stack
         probe_jet_embedding_NEW, probe_jet_constituent_embedding_NEW, event_embedding_NEW = self.stackTop(probe_jet_embedding,probe_jet_constituent_embedding,event_embedding)
         probe_jet_embedding_Top = probe_jet_embedding + probe_jet_embedding_NEW
 
         # Down Encoder Stack
-        probe_jet_embedding_NEW, probe_jet_constituent_embedding_NEW, event_embedding_NEW = self.stackQuark1(probe_jet_embedding,probe_jet_constituent_embedding,event_embedding)
-        probe_jet_embedding = probe_jet_embedding + probe_jet_embedding_NEW
-        probe_jet_constituent_embedding = probe_jet_constituent_embedding + probe_jet_constituent_embedding_NEW
-        event_embedding = event_embedding + event_embedding_NEW
-        probe_jet_embedding_NEW, probe_jet_constituent_embedding_NEW, event_embedding_NEW = self.stackQuark2(probe_jet_embedding,probe_jet_constituent_embedding,event_embedding)
-        probe_jet_embedding_Quark = probe_jet_embedding + probe_jet_embedding_NEW
+        #probe_jet_embedding_NEW, probe_jet_constituent_embedding_NEW, event_embedding_NEW = self.stackQuark1(probe_jet_embedding,probe_jet_constituent_embedding,event_embedding)
+        #probe_jet_embedding = probe_jet_embedding + probe_jet_embedding_NEW
+        #probe_jet_constituent_embedding = probe_jet_constituent_embedding + probe_jet_constituent_embedding_NEW
+        #event_embedding = event_embedding + event_embedding_NEW
+        #probe_jet_embedding_NEW, probe_jet_constituent_embedding_NEW, event_embedding_NEW = self.stackQuark2(probe_jet_embedding,probe_jet_constituent_embedding,event_embedding)
+        #probe_jet_embedding_Quark = probe_jet_embedding + probe_jet_embedding_NEW
 
         # Contract first dimension
         probe_jet_embedding_Top  = torch.squeeze(probe_jet_embedding_Top,1)
-        probe_jet_embedding_Quark = torch.squeeze(probe_jet_embedding_Quark,1)
+        #probe_jet_embedding_Quark = torch.squeeze(probe_jet_embedding_Quark,1)
         
         # Get Top output
-        top_output = self.top_regression(probe_jet_embedding_Top)
+        #top_output = self.top_regression(probe_jet_embedding_Top)
         
         # Get Down output
-        quark_output = self.quark_regression(probe_jet_embedding_Quark)
+        #quark_output = self.quark_regression(probe_jet_embedding_Quark)
 
         # Get Direct output
-        combined_output = torch.cat([probe_jet_embedding_Top,probe_jet_embedding_Quark], axis=1)
-        costheta_output = F.gelu(self.direct_input(combined_output))
-        costheta_output = self.direct_output(costheta_output)
+        #combined_output = torch.cat([probe_jet_embedding_Top,probe_jet_embedding_Quark], axis=1)
+        #costheta_output = F.gelu(self.direct_input(combined_output))
+        costheta_output = self.direct_output(probe_jet_embedding_Top)
         
-        return top_output, quark_output, costheta_output, track_output
+        #return top_output, quark_output, costheta_output, track_output
+        return None, None, costheta_output, None

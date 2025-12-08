@@ -18,20 +18,12 @@ embed_dim = int(sys.argv[3])
 dir_dataset = str(sys.argv[4])
 dir_training = str(sys.argv[5])
 
-dir_startingPoint = "WS_U_10M/training_All_Task_Boost_tRest_Bottom_cosSim_140epoch_64embed"
+dir_startingPoint = "WS_U_10M/training_All_Task_Boost_tRest_Bottom_cosSim_10M_60epoch_64embed"
 
 starting_new = True
 continue_training = not starting_new
 
-# Loss parameters
-alpha   = 1       # Top Loss
-beta    = 0       # Down Loss
-gamma   = 1e6       # Direct Loss
-delta   = 1e6       # Bottom Loss
-epsilon = 0       # KL Loss
-
-zeta = 0           # Track loss
-
+# Parameters
 batch_size=256
 learning_rate=0.0001
 
@@ -56,9 +48,8 @@ if starting_new:
 if continue_training:
     model = torch.load(dir_startingPoint+"/model_final.torch",weights_only=False,map_location=torch.device(device))
 
-step_size=100
+step_size=140
 Gamma=0.1
-#optimizer = optim.AdamW(model.parameters(), lr=learning_rate)
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=Gamma)
 
@@ -67,23 +58,14 @@ def calc_norm(y_pred):
     y_pred_norm = torch.div(y_pred, norm)
     return y_pred_norm
 
-def uniform_to_circle(u):
-    """Convert uniform [-1,1] to 2D point on unit circle"""
-    # Map [-1,1] to [0, 2π]
-    angle = math.pi * (u + 1)  # or equivalently: 2 * math.pi * (u + 1) / 2
-    return torch.cat([torch.cos(angle), torch.sin(angle)], dim=1)
+def uniform_to_circle(cos_theta):
+    angle = torch.acos(cos_theta)
+    return torch.cat([cos_theta, torch.sin(angle)], dim=1)
 
 cosSim_loss_fn = nn.CosineEmbeddingLoss()
-MSE_loss_fn = nn.MSELoss()
-CCE_loss_fn = nn.CrossEntropyLoss()
-kl_loss     = nn.KLDivLoss(reduction="batchmean")
 
 print("Trainable Parameters :", sum(p.numel() for p in model.parameters() if p.requires_grad))
 print("Number of Training Events: ", len(train_loader)*batch_size)
-
-for probe_jet, constituents, event, top_labels, down_labels, bottom_labels, direct_labels, track_labels in train_loader:
-    top_pred, quark_pred, direct_pred, track_pred = model(probe_jet.to(device), constituents.to(device), event.to(device))
-    break
 
 def train(model, optimizer, train_loader, val_loader, epochs=40):
     
@@ -99,19 +81,13 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
             
             top_pred, quark_pred, direct_pred, track_pred = model(probe_jet.to(device), constituents.to(device), event.to(device))
 
-            quark_pred = calc_norm(quark_pred)
-            bottom_costheta = direct_labels[:,1].reshape(-1,1)
-            direct_true = uniform_to_circle(bottom_costheta)
-            #direct_pred = uniform_to_circle(direct_pred)
-            cos_target = torch.ones(quark_pred.shape[0]).to(device)
+            direct_true = uniform_to_circle(direct_labels)
+            direct_pred = calc_norm(direct_pred)
+            cos_target = torch.ones(direct_true.shape[0]).to(device)
 
-            top_loss      = MSE_loss_fn(top_pred, top_labels.to(device))
-            down_loss     = cosSim_loss_fn(quark_pred, down_labels.to(device), cos_target)
-            bottom_loss     = cosSim_loss_fn(quark_pred, bottom_labels.to(device), cos_target)
             costheta_loss = cosSim_loss_fn(direct_pred, direct_true.to(device), cos_target)
-            track_loss    = CCE_loss_fn(track_pred, track_labels.to(device))
 
-            loss  = alpha*top_loss + beta*down_loss + gamma*costheta_loss + delta*bottom_loss + zeta*track_loss
+            loss  = costheta_loss
 
             loss.backward()
             optimizer.step()
@@ -122,47 +98,21 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
         
         model.eval()
         cumulative_loss_val = 0
-        cumulative_loss_top_val = 0
-        cumulative_loss_down_val = 0
-        cumulative_loss_bottom_val = 0
-        cumulative_loss_direct_val = 0
-        cumulative_loss_trk_val= 0
         num_val = len(val_loader)
         for probe_jet, constituents, event, top_labels, down_labels, bottom_labels, direct_labels, track_labels in val_loader:
             top_pred, quark_pred, direct_pred, track_pred = model(probe_jet.to(device), constituents.to(device), event.to(device))
 
-            quark_pred = calc_norm(quark_pred)
-            bottom_costheta = direct_labels[:,1].reshape(-1,1)
-            direct_true = uniform_to_circle(bottom_costheta)
-            #direct_pred = uniform_to_circle(direct_pred)
-            cos_target = torch.ones(quark_pred.shape[0]).to(device)
+            direct_true = uniform_to_circle(direct_labels)
+            direct_pred = calc_norm(direct_pred)
+            cos_target = torch.ones(direct_true.shape[0]).to(device)
 
-            top_loss      = MSE_loss_fn(top_pred, top_labels.to(device))
-            down_loss     = cosSim_loss_fn(quark_pred, down_labels.to(device), cos_target)
-            bottom_loss     = cosSim_loss_fn(quark_pred, bottom_labels.to(device), cos_target)
-            #print(quark_pred.shape, bottom_labels.shape, cos_target.shape, bottom_loss.detach().cpu())
             costheta_loss = cosSim_loss_fn(direct_pred, direct_true.to(device), cos_target)
-            #print(direct_pred.shape, direct_true.shape, cos_target.shape, costheta_loss.detach().cpu())
-            #print(direct_pred)
-            #print(direct_true)
-            #costheta_loss = MSE_loss_fn(direct_pred, bottom_costheta.to(device))
-            track_loss    = CCE_loss_fn(track_pred, track_labels.to(device))
 
-            loss  = alpha*top_loss + beta*down_loss + gamma*costheta_loss + delta*bottom_loss + zeta*track_loss
+            loss  = costheta_loss
 
             cumulative_loss_val+=loss.detach().cpu().numpy().mean()
-            cumulative_loss_top_val+=top_loss.detach().cpu().numpy().mean()
-            cumulative_loss_down_val+=down_loss.detach().cpu().numpy().mean()
-            cumulative_loss_bottom_val+=bottom_loss.detach().cpu().numpy().mean()
-            cumulative_loss_direct_val+=costheta_loss.detach().cpu().numpy().mean()
-            cumulative_loss_trk_val+=track_loss.detach().cpu().numpy().mean()
         
         cumulative_loss_val = cumulative_loss_val / num_val
-        cumulative_loss_top_val = alpha*cumulative_loss_top_val / num_val
-        cumulative_loss_down_val = beta*cumulative_loss_down_val / num_val
-        cumulative_loss_direct_val = gamma*cumulative_loss_direct_val / num_val
-        cumulative_loss_bottom_val = delta*cumulative_loss_bottom_val / num_val
-        cumulative_loss_trk_val= zeta*cumulative_loss_trk_val / num_val
         
         combined_history.append([cumulative_loss_train, cumulative_loss_val])
 
@@ -170,12 +120,6 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
 
         if e%1==0:
             print('Epoch:',e+1,'\tTrain Loss:',round(cumulative_loss_train,6),'\tVal Loss:',round(cumulative_loss_val,6))
-            print('\t\t\t\t\t----------------------')
-            print('\t\t\t\t\tTop Loss: ', round(cumulative_loss_top_val,6))
-            #print('\t\t\t\t\tDown Loss: ', round(cumulative_loss_down_val,6))
-            print('\t\t\t\t\tBottom Loss: ', round(cumulative_loss_bottom_val,6))
-            print('\t\t\t\t\tDirect Loss: ', round(cumulative_loss_direct_val,6))
-            #print('\t\t\t\t\tTrack Loss: ', round(cumulative_loss_trk_val,6))
             print()
 
         torch.save(model,dir_training+"/models/model_Epoch_"+str(e+1)+".torch")
@@ -216,35 +160,14 @@ direct_feats=1
 pred_direct = np.array([]).reshape(0,direct_feats)
 true_direct = np.array([]).reshape(0,direct_feats)
 
-def circle_to_uniform(embeddings):
-    """Convert 2D point on unit circle back to uniform [-1,1]"""
-    # embeddings shape: [..., 2] where last dim is [cos(angle), sin(angle)]
-    cos_vals = embeddings[:, 0]
-    sin_vals = embeddings[:, 1]
-
-    # Get angle in [-π, π]
-    angle = torch.atan2(sin_vals, cos_vals)
-
-    # Map [-π, π] to [-1, 1]
-    u = angle / math.pi
-
-    return u.reshape(-1,1)
-
 for probe_jet, constituents, event, top_labels, down_labels, bottom_labels, direct_labels, track_labels in test_loader:
     top_pred, quark_pred, direct_pred, track_pred = model(probe_jet.to(device), constituents.to(device), event.to(device))
 
-    quark_pred = calc_norm(quark_pred)
-    #direct_pred = torch.tanh(direct_pred)
-    direct_pred = circle_to_uniform(direct_pred)
+    direct_pred = calc_norm(direct_pred)
+    costheta_pred = direct_pred[:,0].reshape(-1,1)
 
-    pred_top = np.vstack((pred_top,top_pred.detach().cpu().numpy()))
-    true_top = np.vstack((true_top,top_labels.detach().cpu().numpy()))
-
-    pred_quark = np.vstack((pred_quark,quark_pred.detach().cpu().numpy()))
-    true_quark = np.vstack((true_quark,bottom_labels.detach().cpu().numpy()))
-
-    pred_direct = np.vstack((pred_direct,direct_pred.detach().cpu().numpy()))
-    true_direct = np.vstack((true_direct,direct_labels[:,1].reshape(-1,1).detach().cpu().numpy()))
+    pred_direct = np.vstack((pred_direct,costheta_pred.detach().cpu().numpy()))
+    true_direct = np.vstack((true_direct,direct_labels.detach().cpu().numpy()))
 
 def validate_predictions(true, pred, var_names):
     num_feats = len(var_names)
@@ -288,7 +211,4 @@ def validate_predictions(true, pred, var_names):
         #plt.show()
         plt.close()
 
-validate_predictions(true_top, pred_top, ["top_px", "top_py", "top_pz", "top_e"])
-#validate_predictions(true_down, pred_down, ["down_px", "down_py", "down_pz"])
-validate_predictions(true_quark, pred_quark, ["bottom_px", "bottom_py", "bottom_pz"])
 validate_predictions(true_direct, pred_direct, ["costheta"])
