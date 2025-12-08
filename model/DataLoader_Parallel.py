@@ -146,7 +146,7 @@ def load_file(file):
     top_labels = combine_feats([top_px, top_py, top_pz, top_e], axis=1)
     down_labels = combine_feats([down_px_norm, down_py_norm, down_pz_norm], axis=1)
     bottom_labels = combine_feats([bottom_px_norm, bottom_py_norm, bottom_pz_norm], axis=1)
-    direct_labels = combine_feats([costheta_down, costheta_bottom], axis=1)
+    direct_labels = combine_feats([costheta_bottom], axis=1)
     track_labels = combine_feats([clipped_probe_jet_constituent_dict["fromDown"], clipped_probe_jet_constituent_dict["fromUp"], clipped_probe_jet_constituent_dict["fromBottom"]], axis=2)
 
     # Convert to tensors
