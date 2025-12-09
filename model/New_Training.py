@@ -56,7 +56,7 @@ if starting_new:
 if continue_training:
     model = torch.load(dir_startingPoint+"/model_final.torch",weights_only=False,map_location=torch.device(device))
 
-step_size=100
+step_size=160
 Gamma=0.1
 #optimizer = optim.AdamW(model.parameters(), lr=learning_rate)
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
@@ -67,11 +67,9 @@ def calc_norm(y_pred):
     y_pred_norm = torch.div(y_pred, norm)
     return y_pred_norm
 
-def uniform_to_circle(u):
-    """Convert uniform [-1,1] to 2D point on unit circle"""
-    # Map [-1,1] to [0, 2π]
-    angle = math.pi * (u + 1)  # or equivalently: 2 * math.pi * (u + 1) / 2
-    return torch.cat([torch.cos(angle), torch.sin(angle)], dim=1)
+def uniform_to_circle(cos_theta):
+    angle = torch.acos(cos_theta)
+    return torch.cat([cos_theta, torch.sin(angle)], dim=1)
 
 cosSim_loss_fn = nn.CosineEmbeddingLoss()
 MSE_loss_fn = nn.MSELoss()
@@ -100,18 +98,18 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
             top_pred, quark_pred, direct_pred, track_pred = model(probe_jet.to(device), constituents.to(device), event.to(device))
 
             quark_pred = calc_norm(quark_pred)
+            direct_pred = calc_norm(direct_pred)
             bottom_costheta = direct_labels[:,1].reshape(-1,1)
             direct_true = uniform_to_circle(bottom_costheta)
-            #direct_pred = uniform_to_circle(direct_pred)
             cos_target = torch.ones(quark_pred.shape[0]).to(device)
 
             top_loss      = MSE_loss_fn(top_pred, top_labels.to(device))
             down_loss     = cosSim_loss_fn(quark_pred, down_labels.to(device), cos_target)
             bottom_loss     = cosSim_loss_fn(quark_pred, bottom_labels.to(device), cos_target)
             costheta_loss = cosSim_loss_fn(direct_pred, direct_true.to(device), cos_target)
-            track_loss    = CCE_loss_fn(track_pred, track_labels.to(device))
+            #track_loss    = CCE_loss_fn(track_pred, track_labels.to(device))
 
-            loss  = alpha*top_loss + beta*down_loss + gamma*costheta_loss + delta*bottom_loss + zeta*track_loss
+            loss  = alpha*top_loss + beta*down_loss + gamma*costheta_loss + delta*bottom_loss #+ zeta*track_loss
 
             loss.backward()
             optimizer.step()
@@ -132,9 +130,9 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
             top_pred, quark_pred, direct_pred, track_pred = model(probe_jet.to(device), constituents.to(device), event.to(device))
 
             quark_pred = calc_norm(quark_pred)
+            direct_pred = calc_norm(direct_pred)
             bottom_costheta = direct_labels[:,1].reshape(-1,1)
             direct_true = uniform_to_circle(bottom_costheta)
-            #direct_pred = uniform_to_circle(direct_pred)
             cos_target = torch.ones(quark_pred.shape[0]).to(device)
 
             top_loss      = MSE_loss_fn(top_pred, top_labels.to(device))
@@ -146,23 +144,23 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
             #print(direct_pred)
             #print(direct_true)
             #costheta_loss = MSE_loss_fn(direct_pred, bottom_costheta.to(device))
-            track_loss    = CCE_loss_fn(track_pred, track_labels.to(device))
+            #track_loss    = CCE_loss_fn(track_pred, track_labels.to(device))
 
-            loss  = alpha*top_loss + beta*down_loss + gamma*costheta_loss + delta*bottom_loss + zeta*track_loss
+            loss  = alpha*top_loss + beta*down_loss + gamma*costheta_loss + delta*bottom_loss #+ zeta*track_loss
 
             cumulative_loss_val+=loss.detach().cpu().numpy().mean()
             cumulative_loss_top_val+=top_loss.detach().cpu().numpy().mean()
             cumulative_loss_down_val+=down_loss.detach().cpu().numpy().mean()
             cumulative_loss_bottom_val+=bottom_loss.detach().cpu().numpy().mean()
             cumulative_loss_direct_val+=costheta_loss.detach().cpu().numpy().mean()
-            cumulative_loss_trk_val+=track_loss.detach().cpu().numpy().mean()
+            #cumulative_loss_trk_val+=track_loss.detach().cpu().numpy().mean()
         
         cumulative_loss_val = cumulative_loss_val / num_val
         cumulative_loss_top_val = alpha*cumulative_loss_top_val / num_val
         cumulative_loss_down_val = beta*cumulative_loss_down_val / num_val
         cumulative_loss_direct_val = gamma*cumulative_loss_direct_val / num_val
         cumulative_loss_bottom_val = delta*cumulative_loss_bottom_val / num_val
-        cumulative_loss_trk_val= zeta*cumulative_loss_trk_val / num_val
+        #cumulative_loss_trk_val= zeta*cumulative_loss_trk_val / num_val
         
         combined_history.append([cumulative_loss_train, cumulative_loss_val])
 
@@ -216,26 +214,11 @@ direct_feats=1
 pred_direct = np.array([]).reshape(0,direct_feats)
 true_direct = np.array([]).reshape(0,direct_feats)
 
-def circle_to_uniform(embeddings):
-    """Convert 2D point on unit circle back to uniform [-1,1]"""
-    # embeddings shape: [..., 2] where last dim is [cos(angle), sin(angle)]
-    cos_vals = embeddings[:, 0]
-    sin_vals = embeddings[:, 1]
-
-    # Get angle in [-π, π]
-    angle = torch.atan2(sin_vals, cos_vals)
-
-    # Map [-π, π] to [-1, 1]
-    u = angle / math.pi
-
-    return u.reshape(-1,1)
-
 for probe_jet, constituents, event, top_labels, down_labels, bottom_labels, direct_labels, track_labels in test_loader:
     top_pred, quark_pred, direct_pred, track_pred = model(probe_jet.to(device), constituents.to(device), event.to(device))
 
     quark_pred = calc_norm(quark_pred)
-    #direct_pred = torch.tanh(direct_pred)
-    direct_pred = circle_to_uniform(direct_pred)
+    direct_pred = calc_norm(direct_pred)
 
     pred_top = np.vstack((pred_top,top_pred.detach().cpu().numpy()))
     true_top = np.vstack((true_top,top_labels.detach().cpu().numpy()))
@@ -243,7 +226,7 @@ for probe_jet, constituents, event, top_labels, down_labels, bottom_labels, dire
     pred_quark = np.vstack((pred_quark,quark_pred.detach().cpu().numpy()))
     true_quark = np.vstack((true_quark,bottom_labels.detach().cpu().numpy()))
 
-    pred_direct = np.vstack((pred_direct,direct_pred.detach().cpu().numpy()))
+    pred_direct = np.vstack((pred_direct,direct_pred[:,0].reshape(-1,1).detach().cpu().numpy()))
     true_direct = np.vstack((true_direct,direct_labels[:,1].reshape(-1,1).detach().cpu().numpy()))
 
 def validate_predictions(true, pred, var_names):
