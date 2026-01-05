@@ -4,7 +4,6 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 import numpy as np
-import math
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_score, roc_auc_score
