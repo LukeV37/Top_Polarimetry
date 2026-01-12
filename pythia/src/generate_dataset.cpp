@@ -9,6 +9,7 @@
 
 #include "TFile.h"
 #include "TTree.h"
+#include "TH1F.h"
 #include "TRandom3.h"
 #include <TRandom.h>
 #include "TString.h"
@@ -46,6 +47,10 @@ int main(int argc, char *argv[])
     // Initialize output ROOT file, TTree, and Branches
     TFile *output = new TFile(TString("../WS_")+TString(dataset_tag)+TString("/dataset_selected_")+TString(dataset_tag)+TString("_")+TString(run_num)+TString(".root"),"recreate");
     TTree *fastjet= new TTree("fastjet", "fastjet");
+    // Histograms of interesting quantities
+    TH1F *h_num_large_jets = new TH1F("h_num_large_jets", "Number of Large-R Jets;N_{jets};Events", 10, 0, 10);
+    TH1F *h_num_constituents = new TH1F("h_num_constituents", "Number of Jet Constituents;N_{constituents};Events", 200, 0, 200);
+    TH1F *h_num_small_jets = new TH1F("h_num_small_jets", "Number of Small-R Jets;N_{jets};Events", 20, 0, 20);
 
     float lepton_pT;
     float lepton_eta;
@@ -387,6 +392,8 @@ int main(int argc, char *argv[])
         fastjet::ClusterSequence clustSeq_large(particles_no_lepton, jetDef_large);
         auto jets_large = fastjet::sorted_by_pt( clustSeq_large.inclusive_jets(pTmin_jet_large) );
 
+        h_num_large_jets->Fill(jets_large.size());
+
         // Skip event if no jets are clustered
         if (jets_large.size()==0){
             fatjet_cut++;
@@ -421,6 +428,7 @@ int main(int argc, char *argv[])
                probe_jet_constituent_fromBottom.push_back(p_fromBottom[trk.user_index()]);
             //}
         }
+        h_num_constituents->Fill(hardest_jet.constituents().size());
 
         // Remove the constituents from clustering
         std::vector<fastjet::PseudoJet> particles_no_fatjet= remove_particles_from_clustering(particles_no_lepton, hardest_jet_constituents);
@@ -431,6 +439,7 @@ int main(int argc, char *argv[])
         fastjet::JetDefinition jetDef_small = fastjet::JetDefinition(fastjet::antikt_algorithm, R_small, fastjet::E_scheme, fastjet::Best);
         fastjet::ClusterSequence clustSeq_small(particles_no_fatjet, jetDef_small);
         auto jets_small = fastjet::sorted_by_pt( clustSeq_small.inclusive_jets(pTmin_jet_small) );
+        h_num_small_jets->Fill(jets_small.size());
 
         // Ensure there is a small R jet on leptonic side
         int selected_small_jet=0;
