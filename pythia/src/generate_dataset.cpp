@@ -51,6 +51,9 @@ int main(int argc, char *argv[])
     TH1F *h_num_large_jets = new TH1F("h_num_large_jets", "Number of Large-R Jets;N_{jets};Events", 10, 0, 10);
     TH1F *h_num_constituents = new TH1F("h_num_constituents", "Number of Jet Constituents;N_{constituents};Events", 200, 0, 200);
     TH1F *h_num_small_jets = new TH1F("h_num_small_jets", "Number of Small-R Jets;N_{jets};Events", 20, 0, 20);
+    TH1F *h_deltaR_jet_top = new TH1F("h_deltaR_jet_top", "DeltaR Between Large-R Jet and Top Quark;deltaR;Events", 20, 0, 6.28);
+    TH1F *h_deltaR_jet_lepton = new TH1F("h_deltaR_jet_lepton", "DeltaR Between Large-R Jet and Lepton;deltaR;Events", 20, 0, 6.28);
+    TH1F *h_deltaPhi_jet_lepton = new TH1F("h_deltaPhi_jet_lepton", "DeltaPhi Between Large-R Jet and Lepton;deltaPhi;Events", 20, -3.14, 3.14);
 
     float lepton_pT;
     float lepton_eta;
@@ -306,6 +309,8 @@ int main(int argc, char *argv[])
         // Initialize vector for fastjet clustering and particle index
         std::vector<fastjet::PseudoJet> fastjet_particles;
 
+        fastjet::PseudoJet truth_top_quark(pythia.event[top_idx].px(), pythia.event[top_idx].py(), pythia.event[top_idx].pz(), pythia.event[top_idx].e());
+
         // Initialize aux info
         std::vector<int> p_PID;
         std::vector<int> p_q;
@@ -386,7 +391,7 @@ int main(int argc, char *argv[])
         std::vector<fastjet::PseudoJet> particles_no_lepton = remove_particles_from_clustering(fastjet_particles, remove_IDs);
 
         // Cluster particles and pick up hardest largeR jet
-        float R_large = 2.0;
+        float R_large = 1.0;
         float pTmin_jet_large = 250; // GeV
         fastjet::JetDefinition jetDef_large = fastjet::JetDefinition(fastjet::cambridge_algorithm, R_large, fastjet::E_scheme, fastjet::Best);
         fastjet::ClusterSequence clustSeq_large(particles_no_lepton, jetDef_large);
@@ -412,6 +417,12 @@ int main(int argc, char *argv[])
             fatjet_cut++;
             continue;
         }
+
+        if (std::abs(hardest_jet.delta_R(truth_top_quark))>1.5) continue;
+
+        h_deltaR_jet_top->Fill(hardest_jet.delta_R(truth_top_quark));
+        h_deltaR_jet_lepton->Fill(hardest_jet.delta_R(lepton));
+        h_deltaPhi_jet_lepton->Fill(hardest_jet.delta_phi_to(lepton));
 
         // Store jet constituents
         std::vector<int> hardest_jet_constituents;
