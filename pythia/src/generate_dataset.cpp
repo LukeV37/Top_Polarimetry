@@ -85,6 +85,11 @@ int main(int argc, char *argv[])
     float bottom_px_boost_tRest, bottom_py_boost_tRest, bottom_pz_boost_tRest, bottom_e_boost_tRest;
     float costheta_down;
     float costheta_bottom;
+    std::vector<float> particle_pT;
+    std::vector<float> particle_eta;
+    std::vector<float> particle_phi;
+    std::vector<int> particle_q;
+    std::vector<int> particle_PID;
 
     // Features
     fastjet->Branch("lepton_pT", &lepton_pT);
@@ -109,6 +114,11 @@ int main(int argc, char *argv[])
     fastjet->Branch("balance_jets_pT", &balance_jets_pT);
     fastjet->Branch("balance_jets_eta", &balance_jets_eta);
     fastjet->Branch("balance_jets_phi", &balance_jets_phi);
+    fastjet->Branch("particle_pT", &particle_pT);
+    fastjet->Branch("particle_eta", &particle_eta);
+    fastjet->Branch("particle_phi", &particle_phi);
+    fastjet->Branch("particle_q", &particle_q);
+    fastjet->Branch("particle_PID", &particle_PID);
     // Labels
     fastjet->Branch("top_px_lab", &top_px);
     fastjet->Branch("top_py_lab", &top_py);
@@ -321,6 +331,7 @@ int main(int argc, char *argv[])
         probe_jet_constituent_pT.clear(); probe_jet_constituent_eta.clear(); probe_jet_constituent_phi.clear(); probe_jet_constituent_q.clear(); probe_jet_constituent_PID.clear();
         probe_jet_constituent_fromDown.clear(); probe_jet_constituent_fromUp.clear(); probe_jet_constituent_fromBottom.clear();
         balance_jets_pT.clear(); balance_jets_eta.clear(); balance_jets_phi.clear();
+        particle_pT.clear(); particle_eta.clear(); particle_phi.clear(); particle_q.clear(); particle_PID.clear();
 
         // Loop through particles in the event
         for(int j=0;j<pythia.event.size();j++){
@@ -344,6 +355,16 @@ int main(int argc, char *argv[])
             p_fromBottom.push_back(fromBottom[j]);
             p_fromLepton.push_back(fromLepton[j]);
             p_fromNu.push_back(fromNu[j]);
+
+            // Store particle info only for particles that pass pT and neutrino cuts
+            if (p.pT() > 0.4 && !(std::abs(p.id())==12 || std::abs(p.id())==14 || std::abs(p.id())==16)) {
+                // Store particle info
+                particle_pT.push_back(p.pT());
+                particle_eta.push_back(p.eta());
+                particle_phi.push_back(p.phi());
+                particle_q.push_back(p.charge());
+                particle_PID.push_back(p.id());
+            }
         }
 
         // Find the isolated lepton
