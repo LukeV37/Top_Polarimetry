@@ -31,7 +31,7 @@ epsilon = 0       # KL Loss
 
 zeta = 0           # Track loss
 
-batch_size=256
+batch_size=64
 learning_rate=0.0001
 
 dset = torch.load(dir_dataset+"/dataset_combined.pt", weights_only=False)
