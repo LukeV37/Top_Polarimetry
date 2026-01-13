@@ -84,6 +84,11 @@ def load_file(file):
         balance_jets_pT = f["balance_jets_pT"].array()
         balance_jets_eta = f["balance_jets_eta"].array()
         balance_jets_phi = f["balance_jets_phi"].array()
+        particle_pT = f["particle_pT"].array()
+        particle_eta = f["particle_eta"].array()
+        particle_phi = f["particle_phi"].array()
+        particle_q = f["particle_q"].array()
+        particle_PID = f["particle_PID"].array()
 
         # Output Labels
         top_px = f["top_px_boost_ttCM"].array()
@@ -107,11 +112,13 @@ def load_file(file):
     # Clipping parameters
     max_constituent_num=200
     max_balance_jet_num=10
+    max_particle_num = 600
 
     # Initlize feature dictionaries
     probe_jet_dict = {"pT": probe_jet_pT, "eta": probe_jet_eta, "phi": probe_jet_phi, "mass": probe_jet_mass}
     probe_jet_constituent_dict = {"pT": probe_jet_constituent_pT, "eta": probe_jet_constituent_eta, "phi": probe_jet_constituent_phi, "q": probe_jet_constituent_q, "PID": probe_jet_constituent_PID,
                                   "fromDown": probe_jet_constituent_fromDown, "fromUp": probe_jet_constituent_fromUp, "fromBottom": probe_jet_constituent_fromBottom}
+    particle_dict = {"pT": particle_pT, "eta": particle_eta, "phi": particle_phi, "q": particle_q, "PID": particle_PID}
     lepton_dict = {"pT": lepton_pT, "eta": lepton_eta, "phi": lepton_phi, "q": lepton_q}
     MET_dict = {"MET": nu_MET, "phi": nu_phi}
     balance_jet_dict = {"pT": balance_jets_pT, "eta": balance_jets_eta, "phi": balance_jets_phi}
@@ -120,6 +127,11 @@ def load_file(file):
     probe_jet_constituents_no_neutrals_dict = cut_neutrals(probe_jet_constituent_dict)
     sorted_probe_jet_constituent_dict = sort_by_pT(probe_jet_constituents_no_neutrals_dict)
     clipped_probe_jet_constituent_dict = clip_to_num(sorted_probe_jet_constituent_dict, max_constituent_num, axis=1)
+
+    # Sort and clip particle_dict
+    particle_no_neutrals_dict = cut_neutrals(particle_dict)
+    sorted_particle_dict = sort_by_pT(particle_no_neutrals_dict)
+    clipped_particle_dict = clip_to_num(sorted_particle_dict, max_particle_num, axis=1)
 
     # Combine feats for balance jets: sort by pT, clip to max num, combine feats
     sorted_balanced_jet_dict = sort_by_pT(balance_jet_dict)
@@ -131,11 +143,13 @@ def load_file(file):
     lepton_feats = combine_feats([lepton_dict["pT"],lepton_dict["eta"],lepton_dict["phi"],lepton_dict["q"]], axis=1)
     MET_feats = combine_feats([MET_dict["MET"], MET_dict["phi"]], axis=1)
     balance_jets_feats = combine_feats([clipped_balance_jet_dict["pT"], clipped_balance_jet_dict["eta"], clipped_balance_jet_dict["phi"]], axis=2)
+    particle_feats = combine_feats([clipped_particle_dict["pT"], clipped_particle_dict["eta"], clipped_particle_dict["phi"], clipped_particle_dict["q"]], axis=2)
 
     # Pad Feats to common length
     common_feat_len = 4
     probe_jet_feats = ak.fill_none(ak.pad_none(probe_jet_feats, common_feat_len, axis=1), 0)
     probe_jet_constituent_feats = ak.fill_none(ak.pad_none(probe_jet_constituent_feats, common_feat_len, axis=2), 0)
+    particle_feats = ak.fill_none(ak.pad_none(particle_feats, common_feat_len, axis=2), 0)
     lepton_feats = ak.fill_none(ak.pad_none(lepton_feats, common_feat_len, axis=1), 0)
     MET_feats = ak.fill_none(ak.pad_none(MET_feats, common_feat_len, axis=1), 0)
     balance_jets_feats = ak.fill_none(ak.pad_none(balance_jets_feats, common_feat_len, axis=2), 0)
@@ -155,9 +169,10 @@ def load_file(file):
     lepton_feats = torch.unsqueeze(torch.tensor(lepton_feats, dtype=torch.float32),1)
     MET_feats = torch.unsqueeze(torch.tensor(MET_feats, dtype=torch.float32),1)
     balance_jets_feats = torch.tensor(balance_jets_feats, dtype=torch.float32)
+    particle_feats = torch.tensor(particle_feats, dtype=torch.float32)
 
     # Construct event tensor
-    event_tensor_feats = torch.cat([probe_jet_feats, probe_jet_constituent_feats, lepton_feats, MET_feats, balance_jets_feats], dim=1)
+    event_tensor_feats = torch.cat([probe_jet_feats, probe_jet_constituent_feats, lepton_feats, MET_feats, balance_jets_feats, particle_feats], dim=1)
 
     return probe_jet_feats, probe_jet_constituent_feats, event_tensor_feats, top_labels, down_labels, bottom_labels, direct_labels, track_labels
 
