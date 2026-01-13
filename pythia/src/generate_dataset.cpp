@@ -357,11 +357,11 @@ int main(int argc, char *argv[])
             p_fromNu.push_back(fromNu[j]);
 
             // Store particle info only for particles that pass pT and neutrino cuts
-            if (p.pt() > 0.4 && !(std::abs(p.id())==12 || std::abs(p.id())==14 || std::abs(p.id())==16)) {
+            if (p.pT() > 0.4 && !(std::abs(p.id())==12 || std::abs(p.id())==14 || std::abs(p.id())==16)) {
                 // Store particle info
-                particle_pT.push_back(fj.pt());
-                particle_eta.push_back(fj.eta());
-                particle_phi.push_back(fj.phi());
+                particle_pT.push_back(p.pT());
+                particle_eta.push_back(p.eta());
+                particle_phi.push_back(p.phi());
                 particle_q.push_back(p.charge());
                 particle_PID.push_back(p.id());
             }
