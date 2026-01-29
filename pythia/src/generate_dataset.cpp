@@ -391,7 +391,7 @@ int main(int argc, char *argv[])
         std::vector<fastjet::PseudoJet> particles_no_lepton = remove_particles_from_clustering(fastjet_particles, remove_IDs);
 
         // Cluster particles and pick up hardest largeR jet
-        float R_large = 1.0;
+        float R_large = 2.0;
         float pTmin_jet_large = 250; // GeV
         fastjet::JetDefinition jetDef_large = fastjet::JetDefinition(fastjet::cambridge_algorithm, R_large, fastjet::E_scheme, fastjet::Best);
         fastjet::ClusterSequence clustSeq_large(particles_no_lepton, jetDef_large);
