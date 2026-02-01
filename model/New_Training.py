@@ -24,9 +24,9 @@ continue_training = not starting_new
 
 # Loss parameters
 alpha   = 1       # Top Loss
-beta    = 0       # Down Loss
-gamma   = 1e6       # Direct Loss
-delta   = 1e6       # Bottom Loss
+beta    = 1e6       # Down Loss
+gamma   = 0       # Direct Loss
+delta   = 0       # Bottom Loss
 epsilon = 0       # KL Loss
 
 zeta = 0           # Track loss
@@ -98,8 +98,8 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
 
             quark_pred = calc_norm(quark_pred)
             direct_pred = calc_norm(direct_pred)
-            bottom_costheta = direct_labels[:,1].reshape(-1,1)
-            direct_true = uniform_to_circle(bottom_costheta)
+            down_costheta = direct_labels[:,0].reshape(-1,1)
+            direct_true = uniform_to_circle(down_costheta)
             cos_target = torch.ones(quark_pred.shape[0]).to(device)
 
             top_loss      = MSE_loss_fn(top_pred, top_labels.to(device))
@@ -130,8 +130,8 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
 
             quark_pred = calc_norm(quark_pred)
             direct_pred = calc_norm(direct_pred)
-            bottom_costheta = direct_labels[:,1].reshape(-1,1)
-            direct_true = uniform_to_circle(bottom_costheta)
+            down_costheta = direct_labels[:,0].reshape(-1,1)
+            direct_true = uniform_to_circle(down_costheta)
             cos_target = torch.ones(quark_pred.shape[0]).to(device)
 
             top_loss      = MSE_loss_fn(top_pred, top_labels.to(device))
@@ -169,8 +169,8 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
             print('Epoch:',e+1,'\tTrain Loss:',round(cumulative_loss_train,6),'\tVal Loss:',round(cumulative_loss_val,6))
             print('\t\t\t\t\t----------------------')
             print('\t\t\t\t\tTop Loss: ', round(cumulative_loss_top_val,6))
-            #print('\t\t\t\t\tDown Loss: ', round(cumulative_loss_down_val,6))
-            print('\t\t\t\t\tBottom Loss: ', round(cumulative_loss_bottom_val,6))
+            print('\t\t\t\t\tDown Loss: ', round(cumulative_loss_down_val,6))
+            #print('\t\t\t\t\tBottom Loss: ', round(cumulative_loss_bottom_val,6))
             print('\t\t\t\t\tDirect Loss: ', round(cumulative_loss_direct_val,6))
             #print('\t\t\t\t\tTrack Loss: ', round(cumulative_loss_trk_val,6))
             print()
@@ -226,7 +226,7 @@ for probe_jet, constituents, event, top_labels, down_labels, bottom_labels, dire
     true_quark = np.vstack((true_quark,bottom_labels.detach().cpu().numpy()))
 
     pred_direct = np.vstack((pred_direct,direct_pred[:,0].reshape(-1,1).detach().cpu().numpy()))
-    true_direct = np.vstack((true_direct,direct_labels[:,1].reshape(-1,1).detach().cpu().numpy()))
+    true_direct = np.vstack((true_direct,direct_labels[:,0].reshape(-1,1).detach().cpu().numpy()))
 
 def validate_predictions(true, pred, var_names):
     num_feats = len(var_names)
@@ -271,6 +271,6 @@ def validate_predictions(true, pred, var_names):
         plt.close()
 
 validate_predictions(true_top, pred_top, ["top_px", "top_py", "top_pz", "top_e"])
-#validate_predictions(true_down, pred_down, ["down_px", "down_py", "down_pz"])
-validate_predictions(true_quark, pred_quark, ["bottom_px", "bottom_py", "bottom_pz"])
+validate_predictions(true_quark, pred_quark, ["down_px", "down_py", "down_pz"])
+#validate_predictions(true_quark, pred_quark, ["bottom_px", "bottom_py", "bottom_pz"])
 validate_predictions(true_direct, pred_direct, ["costheta"])
