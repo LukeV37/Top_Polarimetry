@@ -107,6 +107,7 @@ class Event:
             p_t.Boost(to_ttbar_rest)
             p_tbar.Boost(to_ttbar_rest)
             p_d.Boost(to_ttbar_rest)
+            p_b.Boost(to_ttbar_rest)
 
             # Store top quark kinematics in ttbar CM frame
             self.top_label.px[event] = p_t.Px()
