@@ -74,6 +74,7 @@ int main(int argc, char *argv[])
     std::vector<float> balance_jets_pT;
     std::vector<float> balance_jets_eta;
     std::vector<float> balance_jets_phi;
+    std::vector<int> balance_jets_num_from_b;
     float top_px, top_py, top_pz, top_e;
     float anti_top_px, anti_top_py, anti_top_pz, anti_top_e;
     float down_px, down_py, down_pz, down_e;
@@ -85,6 +86,8 @@ int main(int argc, char *argv[])
     float bottom_px_boost_tRest, bottom_py_boost_tRest, bottom_pz_boost_tRest, bottom_e_boost_tRest;
     float costheta_down;
     float costheta_bottom;
+    double beta_x_ttbar_CM, beta_y_ttbar_CM, beta_z_ttbar_CM;
+    double beta_x_t_rest, beta_y_t_rest, beta_z_t_rest;
 
     // Features
     fastjet->Branch("lepton_pT", &lepton_pT);
@@ -109,6 +112,7 @@ int main(int argc, char *argv[])
     fastjet->Branch("balance_jets_pT", &balance_jets_pT);
     fastjet->Branch("balance_jets_eta", &balance_jets_eta);
     fastjet->Branch("balance_jets_phi", &balance_jets_phi);
+    fastjet->Branch("balance_jets_num_from_b", &balance_jets_num_from_b);
     // Labels
     fastjet->Branch("top_px_lab", &top_px);
     fastjet->Branch("top_py_lab", &top_py);
@@ -144,6 +148,12 @@ int main(int argc, char *argv[])
     fastjet->Branch("bottom_e_boost_tRest", &bottom_e_boost_tRest);
     fastjet->Branch("costheta_down", &costheta_down);
     fastjet->Branch("costheta_bottom", &costheta_bottom);
+    fastjet->Branch("beta_x_ttbar_CM", &beta_x_ttbar_CM);
+    fastjet->Branch("beta_y_ttbar_CM", &beta_y_ttbar_CM);
+    fastjet->Branch("beta_z_ttbar_CM", &beta_z_ttbar_CM);
+    fastjet->Branch("beta_x_t_rest", &beta_x_t_rest);
+    fastjet->Branch("beta_y_t_rest", &beta_y_t_rest);
+    fastjet->Branch("beta_z_t_rest", &beta_z_t_rest);
 
     // Configure Jet parameters
     float pTmin_jet = 250; // GeV
@@ -180,8 +190,6 @@ int main(int argc, char *argv[])
           ++iAbort;
           continue;
         }
-
-
 
         // Use depth-first-search to find down daughters
         std::vector<int> fromDown;
@@ -252,6 +260,9 @@ int main(int argc, char *argv[])
 
         // Construct Lorentz boost to t-tbar CM frame
         to_ttbar_rest = -(p_t + p_tbar).BoostVector();
+        beta_x_ttbar_CM = to_ttbar_rest.X();
+        beta_y_ttbar_CM = to_ttbar_rest.Y();
+        beta_z_ttbar_CM = to_ttbar_rest.Z();
 
         // Boost vectors to t-tbar CM frame
         p_t.Boost(to_ttbar_rest);
@@ -278,6 +289,9 @@ int main(int argc, char *argv[])
 
         // Construct Lorentz boos to top quark rest frame
         to_t_rest = -p_t.BoostVector();
+        beta_x_t_rest = to_t_rest.X();
+        beta_y_t_rest = to_t_rest.Y();
+        beta_z_t_rest = to_t_rest.Z();
 
         // Boost quarks to top quark rest frame
         p_d.Boost(to_t_rest);
@@ -320,7 +334,7 @@ int main(int argc, char *argv[])
         // Clear output vectors
         probe_jet_constituent_pT.clear(); probe_jet_constituent_eta.clear(); probe_jet_constituent_phi.clear(); probe_jet_constituent_q.clear(); probe_jet_constituent_PID.clear();
         probe_jet_constituent_fromDown.clear(); probe_jet_constituent_fromUp.clear(); probe_jet_constituent_fromBottom.clear();
-        balance_jets_pT.clear(); balance_jets_eta.clear(); balance_jets_phi.clear();
+        balance_jets_pT.clear(); balance_jets_eta.clear(); balance_jets_phi.clear(); balance_jets_num_from_b.clear();
 
         // Loop through particles in the event
         for(int j=0;j<pythia.event.size();j++){
@@ -386,7 +400,7 @@ int main(int argc, char *argv[])
         std::vector<fastjet::PseudoJet> particles_no_lepton = remove_particles_from_clustering(fastjet_particles, remove_IDs);
 
         // Cluster particles and pick up hardest largeR jet
-        float R_large = 2.0;
+        float R_large = 1.0;
         float pTmin_jet_large = 250; // GeV
         fastjet::JetDefinition jetDef_large = fastjet::JetDefinition(fastjet::cambridge_algorithm, R_large, fastjet::E_scheme, fastjet::Best);
         fastjet::ClusterSequence clustSeq_large(particles_no_lepton, jetDef_large);
@@ -416,7 +430,7 @@ int main(int argc, char *argv[])
         // Store jet constituents
         std::vector<int> hardest_jet_constituents;
         for (auto trk:hardest_jet.constituents()){
-            //if (trk.pt() > 0.4 and std::abs(trk.eta()) < 4.5){
+            if (trk.pt() > 0.4 and std::abs(trk.eta()) < 4.5){
                hardest_jet_constituents.push_back(trk.user_index());
                probe_jet_constituent_pT.push_back(trk.pt());
                probe_jet_constituent_eta.push_back(trk.eta());
@@ -426,7 +440,7 @@ int main(int argc, char *argv[])
                probe_jet_constituent_fromDown.push_back(p_fromDown[trk.user_index()]);
                probe_jet_constituent_fromUp.push_back(p_fromUp[trk.user_index()]);
                probe_jet_constituent_fromBottom.push_back(p_fromBottom[trk.user_index()]);
-            //}
+            }
         }
         h_num_constituents->Fill(hardest_jet.constituents().size());
 
@@ -446,9 +460,14 @@ int main(int argc, char *argv[])
         float lep_jet_dR;
         for (auto jet:jets_small){
             lep_jet_dR = lepton.delta_R(jet);
-            if (lep_jet_dR > 0.3 && jet.pt() > 30 && jet.eta() < 3){
+            if (lep_jet_dR > 0.3 && jet.pt() > 30 && std::abs(jet.eta()) < 3){
                 selected_small_jet=1;
             }
+            int b_counter=0;
+            for (auto trk:jet.constituents()){
+                if (p_fromBottom[trk.user_index()]==1){b_counter++;}
+            }
+            balance_jets_num_from_b.push_back(b_counter);
         }
         if (selected_small_jet==0){
             leptonic_top++;
