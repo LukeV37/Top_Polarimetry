@@ -32,7 +32,7 @@ num_batches=$(python -c "print(int($num_runs/float($max_cpu_cores))) if $num_run
 if [ "$bypass_pythia" = false ]; then
   start=`date +%s`
   cd pythia
-  ./run.sh $MG_tag $PY_tag $num_runs $max_cpu_cores
+  ./run.sh $MG_tag $PY_tag $num_runs $max_cpu_cores $R $minJetpT
   cd $WORKING_DIR
   end=`date +%s`
   runtime=$((end-start))

@@ -23,16 +23,22 @@
 
 int main(int argc, char *argv[])
 {
-    if (argc < 2){
-        std::cout << "Error! Must enter 2 arguments" << std::endl;
+    if (argc < 5){
+        std::cout << "Error! Must enter 3 arguments" << std::endl;
         std::cout << "1: Dataset Tag (from MadGraph)" << std::endl;
-        std::cout << "2: Number of Runs (from MadGraph)" << std::endl;
+        std::cout << "2: Dataset Tag (for Pythia)" << std::endl;
+        std::cout << "3: Number of Runs (from MadGraph)" << std::endl;
+        std::cout << "4: R parameter for clustering" << std::endl;
+        std::cout << "5: Min Jet pT" << std::endl;
         return 1;
     }
-    char *dataset_tag = argv[1];
-    char *run_num = argv[2];
+    char *in_tag = argv[1];
+    char *out_tag = argv[2];
+    char *run_num = argv[3];
+    float R_large = std::stof(argv[4]);
+    float pTmin_jet_large = std::stof(argv[5]);
 
-    std::string inputFile = std::string("../../madgraph/pp_tt_semi_full_")+std::string(dataset_tag)+std::string("/Events/run_01_")+std::string(run_num)+std::string("/unweighted_events.lhe.gz");
+    std::string inputFile = std::string("../../madgraph/pp_tt_semi_full_")+std::string(in_tag)+std::string("/Events/run_01_")+std::string(run_num)+std::string("/unweighted_events.lhe.gz");
     std::cout << inputFile << std::endl;
 
     // Initialize Pythia Settings
@@ -45,7 +51,7 @@ int main(int argc, char *argv[])
     if (!pythia.init()) return 1;
 
     // Initialize output ROOT file, TTree, and Branches
-    TFile *output = new TFile(TString("../WS_")+TString(dataset_tag)+TString("/dataset_selected_")+TString(dataset_tag)+TString("_")+TString(run_num)+TString(".root"),"recreate");
+    TFile *output = new TFile(TString("../WS_")+TString(out_tag)+TString("/dataset_selected_")+TString(out_tag)+TString("_")+TString(run_num)+TString(".root"),"recreate");
     TTree *fastjet= new TTree("fastjet", "fastjet");
     // Histograms of interesting quantities
     TH1F *h_num_large_jets = new TH1F("h_num_large_jets", "Number of Large-R Jets;N_{jets};Events", 10, 0, 10);
@@ -400,8 +406,6 @@ int main(int argc, char *argv[])
         std::vector<fastjet::PseudoJet> particles_no_lepton = remove_particles_from_clustering(fastjet_particles, remove_IDs);
 
         // Cluster particles and pick up hardest largeR jet
-        float R_large = 1.0;
-        float pTmin_jet_large = 250; // GeV
         fastjet::JetDefinition jetDef_large = fastjet::JetDefinition(fastjet::cambridge_algorithm, R_large, fastjet::E_scheme, fastjet::Best);
         fastjet::ClusterSequence clustSeq_large(particles_no_lepton, jetDef_large);
         auto jets_large = fastjet::sorted_by_pt( clustSeq_large.inclusive_jets(pTmin_jet_large) );
