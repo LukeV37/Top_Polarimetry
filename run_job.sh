@@ -17,7 +17,7 @@ source setup.sh
 if [ "$bypass_madgraph" = false ]; then
   start=`date +%s`
   cd madgraph
-  ./run.sh $tag $process $num_runs $num_events_per_run $max_cpu_cores $seed
+  ./run.sh $MG_tag $process $num_runs $num_events_per_run $max_cpu_cores $seed
   cd $WORKING_DIR
   end=`date +%s`
   runtime=$((end-start))
@@ -32,7 +32,7 @@ num_batches=$(python -c "print(int($num_runs/float($max_cpu_cores))) if $num_run
 if [ "$bypass_pythia" = false ]; then
   start=`date +%s`
   cd pythia
-  ./run.sh $tag $num_runs $max_cpu_cores
+  ./run.sh $MG_tag $PY_tag $num_runs $max_cpu_cores
   cd $WORKING_DIR
   end=`date +%s`
   runtime=$((end-start))
@@ -51,7 +51,7 @@ if [ "$bypass_preprocessing" = false ]; then
   do
     echo -e "\t\tSubmitting job to preprocess run $i"
     mkdir -p "${dir_datasets}/run_$i"
-    python -u DataLoader_Parallel.py $tag $i $dir_datasets > "${dir_datasets}/run_$i/preprocessing.log" &
+    python -u DataLoader_Parallel.py $PY_tag $i $dir_datasets > "${dir_datasets}/run_$i/preprocessing.log" &
     job=$((job+1))
     if [ $job == $max_cpu_cores ]; then
       echo -e "\tStopping jobs submissions! Please wait for batch $batch to finish..."
@@ -62,7 +62,7 @@ if [ "$bypass_preprocessing" = false ]; then
   done
   wait
 
-  python -u Combine_DataSets.py $tag $num_runs $dir_datasets
+  python -u Combine_DataSets.py $PY_tag $num_runs $dir_datasets
   cd $WORKING_DIR
   end=`date +%s`
   runtime=$((end-start))
@@ -77,7 +77,7 @@ if [ "$bypass_train" = false ]; then
   cd model
   mkdir -p $dir_training
   mkdir -p "$dir_training/models"
-  python -u New_Training.py $tag $epochs $embed_dim $dir_datasets $dir_training $analysis_type | tee "${dir_training}/training.log"
+  python -u New_Training.py $PY_tag $epochs $embed_dim $dir_datasets $dir_training $analysis_type | tee "${dir_training}/training.log"
   cd $WORKING_DIR
   end=`date +%s`
   runtime=$((end-start))
