@@ -83,7 +83,8 @@ class Event:
         self.b_label.deltaEta = np.ones_like(self.b.px)*-999
         self.b_label.deltaPhi = np.ones_like(self.b.px)*-999
         
-        self.costheta = np.ones_like(self.b.px)*-999
+        self.costheta_down = np.ones_like(self.b.px)*-999
+        self.costheta_bottom = np.ones_like(self.b.px)*-999
         
         # Loop over events and calculate labels
         for event in range(len(self)):
@@ -156,9 +157,11 @@ class Event:
 
             #down quark direction in top rest frame
             d_vect = p_d.Vect().Unit()
+            b_vect = p_b.Vect().Unit()
 
             #\cos\theta_d = k_vect\dot d_vect
-            self.costheta[event] = k_vect.Dot(d_vect)
+            self.costheta_down[event] = k_vect.Dot(d_vect)
+            self.costheta_bottom[event] = k_vect.Dot(b_vect)
             
     def write_ntuple(self, tag, num):
         with uproot.recreate("pp_tt_semi_full_"+tag+"/labels_"+tag+"_"+num+".root") as f:
@@ -189,7 +192,8 @@ class Event:
                                        "bottom_deltaR": "float32",
                                        "bottom_deltaEta": "float32",
                                        "bottom_deltaPhi": "float32",
-                                       "costheta": "float32",
+                                       "costheta_down": "float32",
+                                       "costheta_bottom": "float32",
                                        }
                            )
             tree.extend( {"top_px": self.top_label.px,
@@ -219,7 +223,8 @@ class Event:
                           "bottom_deltaR" : self.b_label.deltaR,
                           "bottom_deltaEta" : self.b_label.deltaEta,
                           "bottom_deltaPhi" : self.b_label.deltaPhi,
-                          "costheta": self.costheta
+                          "costheta_down": self.costheta_down,
+                          "costheta_bottom": self.costheta_bottom,
                          }
                        )
 
