@@ -80,7 +80,8 @@ int main(int argc, char *argv[])
     std::vector<float> balance_jets_pT;
     std::vector<float> balance_jets_eta;
     std::vector<float> balance_jets_phi;
-    std::vector<int> balance_jets_num_from_b;
+    std::vector<int> balance_jets_num_from_Antib;
+    std::vector<int> balance_jets_btag;
     float top_px, top_py, top_pz, top_e;
     float anti_top_px, anti_top_py, anti_top_pz, anti_top_e;
     float down_px, down_py, down_pz, down_e;
@@ -118,7 +119,8 @@ int main(int argc, char *argv[])
     fastjet->Branch("balance_jets_pT", &balance_jets_pT);
     fastjet->Branch("balance_jets_eta", &balance_jets_eta);
     fastjet->Branch("balance_jets_phi", &balance_jets_phi);
-    fastjet->Branch("balance_jets_num_from_b", &balance_jets_num_from_b);
+    fastjet->Branch("balance_jets_num_from_Antib", &balance_jets_num_from_Antib);
+    fastjet->Branch("balance_jets_btag", &balance_jets_btag);
     // Labels
     fastjet->Branch("top_px_lab", &top_px);
     fastjet->Branch("top_py_lab", &top_py);
@@ -332,6 +334,7 @@ int main(int argc, char *argv[])
         std::vector<int> p_fromDown;
         std::vector<int> p_fromUp;
         std::vector<int> p_fromBottom;
+        std::vector<int> p_fromAntiBottom;
         std::vector<int> p_fromLepton;
         std::vector<int> p_fromNu;
 
@@ -340,7 +343,7 @@ int main(int argc, char *argv[])
         // Clear output vectors
         probe_jet_constituent_pT.clear(); probe_jet_constituent_eta.clear(); probe_jet_constituent_phi.clear(); probe_jet_constituent_q.clear(); probe_jet_constituent_PID.clear();
         probe_jet_constituent_fromDown.clear(); probe_jet_constituent_fromUp.clear(); probe_jet_constituent_fromBottom.clear();
-        balance_jets_pT.clear(); balance_jets_eta.clear(); balance_jets_phi.clear(); balance_jets_num_from_b.clear();
+        balance_jets_pT.clear(); balance_jets_eta.clear(); balance_jets_phi.clear(); balance_jets_num_from_Antib.clear(); balance_jets_btag.clear();
 
         // Loop through particles in the event
         for(int j=0;j<pythia.event.size();j++){
@@ -362,6 +365,7 @@ int main(int argc, char *argv[])
             p_fromDown.push_back(fromDown[j]);
             p_fromUp.push_back(fromUp[j]);
             p_fromBottom.push_back(fromBottom[j]);
+            p_fromAntiBottom.push_back(fromAntiBottom[j]);
             p_fromLepton.push_back(fromLepton[j]);
             p_fromNu.push_back(fromNu[j]);
         }
@@ -459,19 +463,36 @@ int main(int argc, char *argv[])
         auto jets_small = fastjet::sorted_by_pt( clustSeq_small.inclusive_jets(pTmin_jet_small) );
         h_num_small_jets->Fill(jets_small.size());
 
-        // Ensure there is a small R jet on leptonic side
-        int selected_small_jet=0;
-        float lep_jet_dR;
+        // Pseudo-btagging requiring jet to have at least 2 tracks from b
         for (auto jet:jets_small){
-            lep_jet_dR = lepton.delta_R(jet);
-            if (lep_jet_dR > 0.3 && jet.pt() > 30 && std::abs(jet.eta()) < 3){
-                selected_small_jet=1;
-            }
             int b_counter=0;
             for (auto trk:jet.constituents()){
-                if (p_fromBottom[trk.user_index()]==1){b_counter++;}
+                if (trk.pt() < 0.4) continue;
+                if (p_fromAntiBottom[trk.user_index()]==1){b_counter++;}
             }
-            balance_jets_num_from_b.push_back(b_counter);
+            balance_jets_num_from_Antib.push_back(b_counter);
+            if (b_counter>=2){
+                balance_jets_btag.push_back(1);
+            }
+            else {
+                balance_jets_btag.push_back(0);
+            }
+        }
+
+        // Ensure b-tag jet on leptonic side
+        int selected_small_jet=0;
+        float lep_jet_dR;
+        int jet_num=0;
+        for (auto jet:jets_small){
+            if (balance_jets_btag[jet_num]==0) {
+                jet_num++;
+                continue;
+            }
+            lep_jet_dR = lepton.delta_R(jet);
+            if (lep_jet_dR > 0.3 && lep_jet_dR < 3.0  && jet.pt() > 30 && std::abs(jet.eta()) < 3){
+                selected_small_jet=1;
+            }
+            jet_num++;
         }
         if (selected_small_jet==0){
             leptonic_top++;
