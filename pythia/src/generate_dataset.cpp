@@ -80,7 +80,6 @@ int main(int argc, char *argv[])
     std::vector<float> balance_jets_pT;
     std::vector<float> balance_jets_eta;
     std::vector<float> balance_jets_phi;
-    std::vector<int> balance_jets_num_from_Antib;
     std::vector<int> balance_jets_btag;
     float top_px, top_py, top_pz, top_e;
     float anti_top_px, anti_top_py, anti_top_pz, anti_top_e;
@@ -119,7 +118,6 @@ int main(int argc, char *argv[])
     fastjet->Branch("balance_jets_pT", &balance_jets_pT);
     fastjet->Branch("balance_jets_eta", &balance_jets_eta);
     fastjet->Branch("balance_jets_phi", &balance_jets_phi);
-    fastjet->Branch("balance_jets_num_from_Antib", &balance_jets_num_from_Antib);
     fastjet->Branch("balance_jets_btag", &balance_jets_btag);
     // Labels
     fastjet->Branch("top_px_lab", &top_px);
@@ -226,6 +224,7 @@ int main(int argc, char *argv[])
         fromAntiBottom = find_daughters(pythia.event, anti_bottom_idx);
 
         int anti_b_hadron_idx = find_bHadron_from_anti_b(pythia.event, anti_bottom_idx);
+        fastjet::PseudoJet bHadron(pythia.event[anti_b_hadron_idx].px(), pythia.event[anti_b_hadron_idx].py(), pythia.event[anti_b_hadron_idx].pz(), pythia.event[anti_b_hadron_idx].e());
 
         top_px = pythia.event[top_idx].px();
         top_py = pythia.event[top_idx].py();
@@ -345,7 +344,7 @@ int main(int argc, char *argv[])
         // Clear output vectors
         probe_jet_constituent_pT.clear(); probe_jet_constituent_eta.clear(); probe_jet_constituent_phi.clear(); probe_jet_constituent_q.clear(); probe_jet_constituent_PID.clear();
         probe_jet_constituent_fromDown.clear(); probe_jet_constituent_fromUp.clear(); probe_jet_constituent_fromBottom.clear();
-        balance_jets_pT.clear(); balance_jets_eta.clear(); balance_jets_phi.clear(); balance_jets_num_from_Antib.clear(); balance_jets_btag.clear();
+        balance_jets_pT.clear(); balance_jets_eta.clear(); balance_jets_phi.clear(); balance_jets_btag.clear();
 
         // Loop through particles in the event
         for(int j=0;j<pythia.event.size();j++){
@@ -465,15 +464,11 @@ int main(int argc, char *argv[])
         auto jets_small = fastjet::sorted_by_pt( clustSeq_small.inclusive_jets(pTmin_jet_small) );
         h_num_small_jets->Fill(jets_small.size());
 
-        // Pseudo-btagging requiring jet to have at least 2 tracks from b
+        // btagging looking for jets containing bHadron
+        float bHadron_dR;
         for (auto jet:jets_small){
-            int b_counter=0;
-            for (auto trk:jet.constituents()){
-                if (trk.pt() < 0.4) continue;
-                if (p_fromAntiBottom[trk.user_index()]==1){b_counter++;}
-            }
-            balance_jets_num_from_Antib.push_back(b_counter);
-            if (b_counter>=2){
+            bHadron_dR = bHadron.delta_R(jet);
+            if (bHadron_dR<=R_small){
                 balance_jets_btag.push_back(1);
             }
             else {
