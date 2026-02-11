@@ -28,15 +28,21 @@ int find_b_from_top(const Pythia8::Event& event, int top_idx){
     int d1 = top.daughter1();
     int d2 = top.daughter2();
 
+
     // Loop over top daughters; look for b quark
     int current_idx = top_idx;
+
+    if (event[d1].idAbs()==5 && d2==0){
+        return find_b_from_top(event, d1);
+    }
+
     for (int i=d1; i<=d2; i++){
         if(event[i].idAbs()==5) {
-            return find_b_from_top(event, i); // If top decayed to b, return idx
+            return find_b_from_top(event, i); // If b decayed to b, recursion until no more b chain
         }
     }
 
-    return current_idx;
+    return current_idx; // return final index after b chain
 }
 
 int find_down_from_W(const Pythia8::Event& event, int W_idx){
@@ -174,6 +180,24 @@ int find_nu_from_top(const Pythia8::Event& event, int top_idx){
         }
         // Find nuton directly from top
         if (event[i].idAbs()==12 || event[i].idAbs()==14 || event[i].idAbs()==16){
+            return i;
+        }
+    }
+    return -1; // Nothing good
+}
+
+int find_bHadron_from_anti_b(const Pythia8::Event& event, int anti_b_idx){
+    auto &anti_b = event[anti_b_idx];
+
+    // Get top daughters and look for b
+    int d1 = anti_b.daughter1();
+    int d2 = anti_b.daughter2();
+
+    // Loop over daughters; look for b quark
+    for (int i=d1; d1<=d2; i++){
+        // Find b hadron
+        auto &p = event[i];
+        if (p.isHadron()==1 && ((p.idAbs()/1000)==5 || (p.idAbs()/100)==5)){
             return i;
         }
     }

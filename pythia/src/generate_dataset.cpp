@@ -198,6 +198,8 @@ int main(int argc, char *argv[])
           ++iAbort;
           continue;
         }
+        total_event_counter++;
+        event_no++;
 
         // Use depth-first-search to find down daughters
         std::vector<int> fromDown;
@@ -223,6 +225,8 @@ int main(int argc, char *argv[])
         fromNu = find_daughters(pythia.event, nu_idx);
         fromAntiBottom = find_daughters(pythia.event, anti_bottom_idx);
 
+        int anti_b_hadron_idx = find_bHadron_from_anti_b(pythia.event, anti_bottom_idx);
+
         top_px = pythia.event[top_idx].px();
         top_py = pythia.event[top_idx].py();
         top_pz = pythia.event[top_idx].pz();
@@ -240,7 +244,6 @@ int main(int argc, char *argv[])
         bottom_pz = pythia.event[bottom_idx].pz();
         bottom_e = pythia.event[bottom_idx].e();
 
-        /*
         if (event_no==0){
             std::cout << "top_idx: " << top_idx << std::endl;
             std::cout << "down_idx: " << down_idx << std::endl;
@@ -250,9 +253,8 @@ int main(int argc, char *argv[])
             std::cout << "lepton_idx: " << lepton_idx << std::endl;
             std::cout << "nu_idx: " << nu_idx << std::endl;
             std::cout << "anti_bottom_idx: " << anti_bottom_idx << std::endl;
-            event_no++;
+            std::cout << "anti_b_hadron_idx: " << anti_b_hadron_idx << std::endl;
         }
-        */
 
         TLorentzVector p_t, p_tbar, p_d, p_b;
         p_t = TLorentzVector(top_px, top_py, top_pz, top_e);
