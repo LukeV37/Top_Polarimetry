@@ -10,3 +10,9 @@ madgraph/pp_tt_semi_full*
 model/WS*
 *__pycache__
 *.pt
+*.o
+*.pcm
+*_dict.cpp
+
+run_dataset
+run_selections
