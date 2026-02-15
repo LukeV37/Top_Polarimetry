@@ -274,6 +274,8 @@ def validate_predictions(true, pred, var_names):
         plt.close()
 
 validate_predictions(true_top, pred_top, ["top_px", "top_py", "top_pz", "top_e"])
-validate_predictions(true_quark, pred_quark, ["down_px", "down_py", "down_pz"])
-#validate_predictions(true_quark, pred_quark, ["bottom_px", "bottom_py", "bottom_pz"])
+if train_type=="down":
+    validate_predictions(true_quark, pred_quark, ["down_px", "down_py", "down_pz"])
+if train_type=="bottom":
+    validate_predictions(true_quark, pred_quark, ["bottom_px", "bottom_py", "bottom_pz"])
 validate_predictions(true_direct, pred_direct, ["costheta"])
