@@ -468,7 +468,7 @@ int main(int argc, char *argv[])
         float bHadron_dR;
         for (auto jet:jets_small){
             bHadron_dR = bHadron.delta_R(jet);
-            if (bHadron_dR<=R_small){
+            if (bHadron_dR<=0.2){
                 balance_jets_btag.push_back(1);
             }
             else {
