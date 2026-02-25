@@ -193,6 +193,10 @@ int find_bHadron_from_b(const Pythia8::Event& event, int b_idx){
     int d1 = b.daughter1();
     int d2 = b.daughter2();
 
+    if (d1!=0 && d2==0){
+        return find_bHadron_from_b(event, d1);
+    }
+
     // Loop over daughters; look for b quark
     for (int i=d1; d1<=d2; i++){
         // Find b hadron
