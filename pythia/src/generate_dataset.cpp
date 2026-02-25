@@ -248,6 +248,7 @@ int main(int argc, char *argv[])
         bottom_e = pythia.event[bottom_idx].e();
 
         if (event_no==1){
+            //pythia.event.list();
             std::cout << "top_idx: " << top_idx << std::endl;
             std::cout << "down_idx: " << down_idx << std::endl;
             std::cout << "up_idx: " << up_idx << std::endl;
