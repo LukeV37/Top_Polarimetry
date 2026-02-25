@@ -186,12 +186,12 @@ int find_nu_from_top(const Pythia8::Event& event, int top_idx){
     return -1; // Nothing good
 }
 
-int find_bHadron_from_anti_b(const Pythia8::Event& event, int anti_b_idx){
-    auto &anti_b = event[anti_b_idx];
+int find_bHadron_from_b(const Pythia8::Event& event, int b_idx){
+    auto &b = event[b_idx];
 
     // Get top daughters and look for b
-    int d1 = anti_b.daughter1();
-    int d2 = anti_b.daughter2();
+    int d1 = b.daughter1();
+    int d2 = b.daughter2();
 
     // Loop over daughters; look for b quark
     for (int i=d1; d1<=d2; i++){
