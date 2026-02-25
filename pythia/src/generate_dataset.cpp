@@ -437,6 +437,7 @@ int main(int argc, char *argv[])
             bHadron_dR = bHadron.delta_R(jet);
             if (bHadron_dR<=(R_large*0.8)){
                 selected_fat_jet_idx=j;
+                break;
             }
             j++;
         }
