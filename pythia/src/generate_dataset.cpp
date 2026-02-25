@@ -184,6 +184,7 @@ int main(int argc, char *argv[])
     int isolated_lepton_cut=0;
     int missingET_cut=0;
     int fatjet_cut=0;
+    int bHadron_fatjet_cut=0;
     int leptonic_top=0;
 
     // Begin Event Loop; generate until none left in input file
@@ -215,6 +216,9 @@ int main(int argc, char *argv[])
         fromUp = find_daughters(pythia.event, up_idx);
         fromBottom = find_daughters(pythia.event, bottom_idx);
 
+        int b_hadron_idx = find_bHadron_from_b(pythia.event, bottom_idx);
+        fastjet::PseudoJet bHadron(pythia.event[b_hadron_idx].px(), pythia.event[b_hadron_idx].py(), pythia.event[b_hadron_idx].pz(), pythia.event[b_hadron_idx].e());
+
         int anti_top_idx = find_top_from_event(pythia.event, -6);
         int lepton_idx = find_lep_from_top(pythia.event, anti_top_idx);
         int nu_idx = find_nu_from_top(pythia.event, anti_top_idx);
@@ -223,8 +227,8 @@ int main(int argc, char *argv[])
         fromNu = find_daughters(pythia.event, nu_idx);
         fromAntiBottom = find_daughters(pythia.event, anti_bottom_idx);
 
-        int anti_b_hadron_idx = find_bHadron_from_anti_b(pythia.event, anti_bottom_idx);
-        fastjet::PseudoJet bHadron(pythia.event[anti_b_hadron_idx].px(), pythia.event[anti_b_hadron_idx].py(), pythia.event[anti_b_hadron_idx].pz(), pythia.event[anti_b_hadron_idx].e());
+        int anti_b_hadron_idx = find_bHadron_from_b(pythia.event, anti_bottom_idx);
+        fastjet::PseudoJet anti_bHadron(pythia.event[anti_b_hadron_idx].px(), pythia.event[anti_b_hadron_idx].py(), pythia.event[anti_b_hadron_idx].pz(), pythia.event[anti_b_hadron_idx].e());
 
         top_px = pythia.event[top_idx].px();
         top_py = pythia.event[top_idx].py();
@@ -243,11 +247,12 @@ int main(int argc, char *argv[])
         bottom_pz = pythia.event[bottom_idx].pz();
         bottom_e = pythia.event[bottom_idx].e();
 
-        if (event_no==0){
+        if (event_no==1){
             std::cout << "top_idx: " << top_idx << std::endl;
             std::cout << "down_idx: " << down_idx << std::endl;
             std::cout << "up_idx: " << up_idx << std::endl;
             std::cout << "bottom_idx: " << bottom_idx << std::endl;
+            std::cout << "b_hadron_idx: " << b_hadron_idx << std::endl;
             std::cout << "anti_top_idx: " << anti_top_idx << std::endl;
             std::cout << "lepton_idx: " << lepton_idx << std::endl;
             std::cout << "nu_idx: " << nu_idx << std::endl;
@@ -410,7 +415,7 @@ int main(int argc, char *argv[])
         remove_IDs.push_back(isolated_lepton_idx);
         std::vector<fastjet::PseudoJet> particles_no_lepton = remove_particles_from_clustering(fastjet_particles, remove_IDs);
 
-        // Cluster particles and pick up hardest largeR jet
+        // Cluster particles and pick up largeR jet
         fastjet::JetDefinition jetDef_large = fastjet::JetDefinition(fastjet::cambridge_algorithm, R_large, fastjet::E_scheme, fastjet::Best);
         fastjet::ClusterSequence clustSeq_large(particles_no_lepton, jetDef_large);
         auto jets_large = fastjet::sorted_by_pt( clustSeq_large.inclusive_jets(pTmin_jet_large) );
@@ -423,12 +428,29 @@ int main(int argc, char *argv[])
             continue;
         }
 
-        // Get kinematics of the hardest jet
-        fastjet::PseudoJet hardest_jet = jets_large[0];
-        probe_jet_pT  = hardest_jet.pt();
-        probe_jet_eta = hardest_jet.eta();
-        probe_jet_phi = hardest_jet.phi();
-        probe_jet_mass= hardest_jet.m();
+        // Find fatjet that contains b hadron
+        int selected_fat_jet_idx=-1;
+        float bHadron_dR;
+        int j=0;
+        for (auto jet:jets_large){
+            bHadron_dR = bHadron.delta_R(jet);
+            if (bHadron_dR<=(R_large*0.8)){
+                selected_fat_jet_idx=j;
+            }
+            j++;
+        }
+
+        if (selected_fat_jet_idx==-1){
+            bHadron_fatjet_cut++;
+            continue;
+        }
+
+        // Get kinematics of fat jet containing bHadron
+        fastjet::PseudoJet tagged_fat_jet = jets_large[selected_fat_jet_idx];
+        probe_jet_pT  = tagged_fat_jet.pt();
+        probe_jet_eta = tagged_fat_jet.eta();
+        probe_jet_phi = tagged_fat_jet.phi();
+        probe_jet_mass= tagged_fat_jet.m();
 
         // Skip event if jet has |eta|>3
         if (std::abs(probe_jet_eta)>3){
@@ -437,10 +459,10 @@ int main(int argc, char *argv[])
         }
 
         // Store jet constituents
-        std::vector<int> hardest_jet_constituents;
-        for (auto trk:hardest_jet.constituents()){
+        std::vector<int> tagged_fat_jet_constituents;
+        for (auto trk:tagged_fat_jet.constituents()){
             if (trk.pt() > 0.4 and std::abs(trk.eta()) < 4.5){
-               hardest_jet_constituents.push_back(trk.user_index());
+               tagged_fat_jet_constituents.push_back(trk.user_index());
                probe_jet_constituent_pT.push_back(trk.pt());
                probe_jet_constituent_eta.push_back(trk.eta());
                probe_jet_constituent_phi.push_back(trk.phi());
@@ -451,10 +473,10 @@ int main(int argc, char *argv[])
                probe_jet_constituent_fromBottom.push_back(p_fromBottom[trk.user_index()]);
             }
         }
-        h_num_constituents->Fill(hardest_jet.constituents().size());
+        h_num_constituents->Fill(tagged_fat_jet.constituents().size());
 
         // Remove the constituents from clustering
-        std::vector<fastjet::PseudoJet> particles_no_fatjet= remove_particles_from_clustering(particles_no_lepton, hardest_jet_constituents);
+        std::vector<fastjet::PseudoJet> particles_no_fatjet= remove_particles_from_clustering(particles_no_lepton, tagged_fat_jet_constituents);
 
         // Cluster small R jets
         float R_small = 0.4;
@@ -465,10 +487,10 @@ int main(int argc, char *argv[])
         h_num_small_jets->Fill(jets_small.size());
 
         // btagging looking for jets containing bHadron
-        float bHadron_dR;
+        float anti_bHadron_dR;
         for (auto jet:jets_small){
-            bHadron_dR = bHadron.delta_R(jet);
-            if (bHadron_dR<=0.2){
+            anti_bHadron_dR = anti_bHadron.delta_R(jet);
+            if (anti_bHadron_dR<=0.2){
                 balance_jets_btag.push_back(1);
             }
             else {
@@ -512,6 +534,7 @@ int main(int argc, char *argv[])
     std::cout << "Isolated Lepton Cut: " << isolated_lepton_cut << std::endl;
     std::cout << "MissingET Cut: " << missingET_cut << std::endl;
     std::cout << "FatJet Cut: " << fatjet_cut << std::endl;
+    std::cout << "bHadron FatJet Cut: " << bHadron_fatjet_cut << std::endl;
     std::cout << "SmallR Jet Cut: " << leptonic_top << std::endl;
     std::cout << "Remaining Events: " << total_event_counter - isolated_lepton_cut - missingET_cut - fatjet_cut - leptonic_top << std::endl;
 
