@@ -18,7 +18,7 @@ dir_dataset = str(sys.argv[4])
 dir_training = str(sys.argv[5])
 train_type = str(sys.argv[6])
 
-dir_startingPoint = "WS_U_10M/training_All_Task_Boost_tRest_Bottom_cosSim_140epoch_64embed"
+dir_startingPoint = "WS_U_10M_R1_5_pT400/training_bottom_60epoch_64embed"
 
 starting_new = True
 continue_training = not starting_new
@@ -226,7 +226,10 @@ for probe_jet, constituents, event, top_labels, down_labels, bottom_labels, dire
     true_top = np.vstack((true_top,top_labels.detach().cpu().numpy()))
 
     pred_quark = np.vstack((pred_quark,quark_pred.detach().cpu().numpy()))
-    true_quark = np.vstack((true_quark,bottom_labels.detach().cpu().numpy()))
+    if train_type=="down":
+        true_quark = np.vstack((true_quark,down_labels.detach().cpu().numpy()))
+    if train_type=="bottom":
+        true_quark = np.vstack((true_quark,bottom_labels.detach().cpu().numpy()))
 
     pred_direct = np.vstack((pred_direct,direct_pred[:,0].reshape(-1,1).detach().cpu().numpy()))
     true_direct = np.vstack((true_direct,direct_labels[:,label_idx].reshape(-1,1).detach().cpu().numpy()))
