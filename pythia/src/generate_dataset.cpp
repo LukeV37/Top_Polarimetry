@@ -69,6 +69,7 @@ int main(int argc, char *argv[])
     float probe_jet_eta;
     float probe_jet_phi;
     float probe_jet_mass;
+    int num_large_jets;
     std::vector<float> probe_jet_constituent_pT;
     std::vector<float> probe_jet_constituent_eta;
     std::vector<float> probe_jet_constituent_phi;
@@ -81,6 +82,7 @@ int main(int argc, char *argv[])
     std::vector<float> balance_jets_eta;
     std::vector<float> balance_jets_phi;
     std::vector<int> balance_jets_btag;
+    std::vector<int> balance_jets_antibtag;
     float top_px, top_py, top_pz, top_e;
     float anti_top_px, anti_top_py, anti_top_pz, anti_top_e;
     float down_px, down_py, down_pz, down_e;
@@ -103,6 +105,7 @@ int main(int argc, char *argv[])
     fastjet->Branch("lepton_minDeltaR", &lepton_minDeltaR);
     fastjet->Branch("nu_MET", &nu_MET);
     fastjet->Branch("nu_phi", &nu_phi);
+    fastjet->Branch("num_large_jets", &num_large_jets);
     fastjet->Branch("probe_jet_pT", &probe_jet_pT);
     fastjet->Branch("probe_jet_eta", &probe_jet_eta);
     fastjet->Branch("probe_jet_phi", &probe_jet_phi);
@@ -119,6 +122,7 @@ int main(int argc, char *argv[])
     fastjet->Branch("balance_jets_eta", &balance_jets_eta);
     fastjet->Branch("balance_jets_phi", &balance_jets_phi);
     fastjet->Branch("balance_jets_btag", &balance_jets_btag);
+    fastjet->Branch("balance_jets_antibtag", &balance_jets_antibtag);
     // Labels
     fastjet->Branch("top_px_lab", &top_px);
     fastjet->Branch("top_py_lab", &top_py);
@@ -350,7 +354,7 @@ int main(int argc, char *argv[])
         // Clear output vectors
         probe_jet_constituent_pT.clear(); probe_jet_constituent_eta.clear(); probe_jet_constituent_phi.clear(); probe_jet_constituent_q.clear(); probe_jet_constituent_PID.clear();
         probe_jet_constituent_fromDown.clear(); probe_jet_constituent_fromUp.clear(); probe_jet_constituent_fromBottom.clear();
-        balance_jets_pT.clear(); balance_jets_eta.clear(); balance_jets_phi.clear(); balance_jets_btag.clear();
+        balance_jets_pT.clear(); balance_jets_eta.clear(); balance_jets_phi.clear(); balance_jets_btag.clear(); balance_jets_antibtag.clear();
 
         // Loop through particles in the event
         for(int j=0;j<pythia.event.size();j++){
@@ -421,6 +425,7 @@ int main(int argc, char *argv[])
         fastjet::ClusterSequence clustSeq_large(particles_no_lepton, jetDef_large);
         auto jets_large = fastjet::sorted_by_pt( clustSeq_large.inclusive_jets(pTmin_jet_large) );
 
+        num_large_jets = jets_large.size();
         h_num_large_jets->Fill(jets_large.size());
 
         // Skip event if no jets are clustered
@@ -429,13 +434,14 @@ int main(int argc, char *argv[])
             continue;
         }
 
+        /*
         // Find fatjet that contains b hadron
         int selected_fat_jet_idx=-1;
         float bHadron_dR;
         int j=0;
         for (auto jet:jets_large){
             bHadron_dR = bHadron.delta_R(jet);
-            if (bHadron_dR<=(R_large*0.8)){
+            if (bHadron_dR<=(R_large*1.5)){
                 selected_fat_jet_idx=j;
                 break;
             }
@@ -446,6 +452,8 @@ int main(int argc, char *argv[])
             bHadron_fatjet_cut++;
             continue;
         }
+        */
+        int selected_fat_jet_idx=0; // Select hardest jet
 
         // Get kinematics of fat jet containing bHadron
         fastjet::PseudoJet tagged_fat_jet = jets_large[selected_fat_jet_idx];
@@ -489,14 +497,26 @@ int main(int argc, char *argv[])
         h_num_small_jets->Fill(jets_small.size());
 
         // btagging looking for jets containing bHadron
-        float anti_bHadron_dR;
+        float bHadron_dR;
         for (auto jet:jets_small){
-            anti_bHadron_dR = anti_bHadron.delta_R(jet);
-            if (anti_bHadron_dR<=0.2){
+            bHadron_dR = bHadron.delta_R(jet);
+            if (bHadron_dR<=0.3){
                 balance_jets_btag.push_back(1);
             }
             else {
                 balance_jets_btag.push_back(0);
+            }
+        }
+
+        // btagging looking for jets containing bHadron
+        float anti_bHadron_dR;
+        for (auto jet:jets_small){
+            anti_bHadron_dR = anti_bHadron.delta_R(jet);
+            if (anti_bHadron_dR<=0.3){
+                balance_jets_antibtag.push_back(1);
+            }
+            else {
+                balance_jets_antibtag.push_back(0);
             }
         }
 
@@ -505,7 +525,7 @@ int main(int argc, char *argv[])
         float lep_jet_dR;
         int jet_num=0;
         for (auto jet:jets_small){
-            if (balance_jets_btag[jet_num]==0) {
+            if (balance_jets_antibtag[jet_num]==0) {
                 jet_num++;
                 continue;
             }
