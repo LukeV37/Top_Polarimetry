@@ -190,6 +190,7 @@ int main(int argc, char *argv[])
     int fatjet_cut=0;
     int bHadron_fatjet_cut=0;
     int leptonic_top=0;
+    int light_jet_veto=0;
 
     // Begin Event Loop; generate until none left in input file
     while (iAbort < nAbort) {
@@ -434,6 +435,12 @@ int main(int argc, char *argv[])
             continue;
         }
 
+        // Skip event if more than 1 is clustered
+        if (jets_large.size()!=1){
+            fatjet_cut++;
+            continue;
+        }
+
         /*
         // Find fatjet that contains b hadron
         int selected_fat_jet_idx=-1;
@@ -540,6 +547,21 @@ int main(int argc, char *argv[])
             continue;
         }
 
+        // Light jet veto
+        jet_num=0;
+        int jet_veto_flag=0;
+        for (auto jet:jets_small){
+            if (balance_jets_antibtag[jet_num]==0 && balance_jets_btag[jet_num]==0 && jet.pt()>50){
+                jet_veto_flag=1;
+                break;
+            }
+            jet_num++;
+        }
+        if (jet_veto_flag==1){
+            light_jet_veto++;
+            continue;
+        }
+
         // Store smallR jet kinematics
         for (auto jet:jets_small){
             balance_jets_pT.push_back(jet.pt());
@@ -557,8 +579,9 @@ int main(int argc, char *argv[])
     std::cout << "MissingET Cut: " << missingET_cut << std::endl;
     std::cout << "FatJet Cut: " << fatjet_cut << std::endl;
     std::cout << "bHadron FatJet Cut: " << bHadron_fatjet_cut << std::endl;
-    std::cout << "SmallR Jet Cut: " << leptonic_top << std::endl;
-    std::cout << "Remaining Events: " << total_event_counter - isolated_lepton_cut - missingET_cut - fatjet_cut - leptonic_top << std::endl;
+    std::cout << "Leptonic btag Cut: " << leptonic_top << std::endl;
+    std::cout << "Light Jet Cut: " << light_jet_veto << std::endl;
+    std::cout << "Remaining Events: " << total_event_counter - isolated_lepton_cut - missingET_cut - fatjet_cut - leptonic_top - light_jet_veto << std::endl;
 
     // Write out ROOT file
     output->Write();
