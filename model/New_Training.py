@@ -24,8 +24,8 @@ starting_new = True
 continue_training = not starting_new
 
 # Loss parameters
-alpha   = 1       # Top Loss
-beta    = 1e6       # Quark Loss
+alpha   = 0       # Top Loss
+beta    = 1e4       # Quark Loss
 gamma   = 0       # Direct Loss
 #zeta = 0           # Track loss
 
@@ -99,8 +99,8 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
             
             top_pred, quark_pred, direct_pred, track_pred = model(probe_jet.to(device), constituents.to(device), event.to(device))
 
-            quark_pred = calc_norm(quark_pred)
-            direct_pred = calc_norm(direct_pred)
+            #quark_pred = calc_norm(quark_pred)
+            #direct_pred = calc_norm(direct_pred)
             true_costheta = direct_labels[:,label_idx].reshape(-1,1)
             direct_true = uniform_to_circle(true_costheta)
             cos_target = torch.ones(quark_pred.shape[0]).to(device)
@@ -132,8 +132,8 @@ def train(model, optimizer, train_loader, val_loader, epochs=40):
         for probe_jet, constituents, event, top_labels, down_labels, bottom_labels, direct_labels, track_labels in val_loader:
             top_pred, quark_pred, direct_pred, track_pred = model(probe_jet.to(device), constituents.to(device), event.to(device))
 
-            quark_pred = calc_norm(quark_pred)
-            direct_pred = calc_norm(direct_pred)
+            #quark_pred = calc_norm(quark_pred)
+            #direct_pred = calc_norm(direct_pred)
             true_costheta = direct_labels[:,label_idx].reshape(-1,1)
             direct_true = uniform_to_circle(true_costheta)
             cos_target = torch.ones(quark_pred.shape[0]).to(device)
@@ -219,8 +219,8 @@ true_direct = np.array([]).reshape(0,direct_feats)
 for probe_jet, constituents, event, top_labels, down_labels, bottom_labels, direct_labels, track_labels in test_loader:
     top_pred, quark_pred, direct_pred, track_pred = model(probe_jet.to(device), constituents.to(device), event.to(device))
 
-    quark_pred = calc_norm(quark_pred)
-    direct_pred = calc_norm(direct_pred)
+    #quark_pred = calc_norm(quark_pred)
+    #direct_pred = calc_norm(direct_pred)
 
     pred_top = np.vstack((pred_top,top_pred.detach().cpu().numpy()))
     true_top = np.vstack((true_top,top_labels.detach().cpu().numpy()))
