@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # Define the arrays of values to iterate over
-processes=("U" "L" "R")
-R_values=("1.0" "1.5" "2.0")
-pT_values=("250" "400" "550")
+processes=("L" "R")
+R_values=("1.5")
+pT_values=("250")
 
 # Template file
 template="job.config"
