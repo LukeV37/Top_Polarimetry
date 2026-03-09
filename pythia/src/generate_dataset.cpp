@@ -547,6 +547,7 @@ int main(int argc, char *argv[])
             continue;
         }
 
+        /*
         // Light jet veto
         jet_num=0;
         int jet_veto_flag=0;
@@ -561,6 +562,7 @@ int main(int argc, char *argv[])
             light_jet_veto++;
             continue;
         }
+        */
 
         // Store smallR jet kinematics
         for (auto jet:jets_small){
