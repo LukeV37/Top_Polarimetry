@@ -24,7 +24,7 @@ starting_new = True
 continue_training = not starting_new
 
 # Loss parameters
-alpha   = 0       # Top Loss
+alpha   = 1       # Top Loss
 beta    = 1e4       # Quark Loss
 gamma   = 0       # Direct Loss
 #zeta = 0           # Track loss
