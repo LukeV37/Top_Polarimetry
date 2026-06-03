@@ -1,49 +1,49 @@
 #!/bin/bash
 
-if [ -z "$6" ]; then
-    echo "Must enter 6 agruments"
+if [ -z "$7" ]; then
+    echo "Must enter 7 arguments"
     echo -e "\t1: Dataset Tag e.g. unpolarized_10k"
     echo -e "\t2: Polarization: L, R, U"
-    echo -e "\t3: Number of Runs"
-    echo -e "\t4: Number of Events per Run"
-    echo -e "\t5: Max num cpu cores"
-    echo -e "\t6: Initial seed"
+    echo -e "\t3: Generation: inclusive, first, second"
+    echo -e "\t4: Number of Runs"
+    echo -e "\t5: Number of Events per Run"
+    echo -e "\t6: Max num cpu cores"
+    echo -e "\t7: Initial seed"
     exit 1
 fi
 
 dataset_tag=$1
 polarization=$2
-num_runs=$3
-num_events_per_run=$4
-max_cpu_cores=$5
-seed=$6
+generation=$3
+num_runs=$4
+num_events_per_run=$5
+max_cpu_cores=$6
+seed=$7
 
-# Error handling before launching event generation
 set -e
-python -c "import ROOT; import uproot; import awkward"
 
 ###########################
 ### MadGraph Generation ###
 ###########################
 
 # Edit process card
-sed "s/output pp_tt_semi_full/output pp_tt_semi_full_${dataset_tag}/" include/proc_card_mg5.dat > proc_card.tmp
+sed "s/output pp_tt_semi_full/output pp_tt_semi_full_${dataset_tag}/" proc_card_mg5.dat > proc_card.tmp
+
+# Apply polarization (U requires no spin tag)
 if [ "$polarization" = "L" ]; then
-  sed -i "s/generate p p > t t~, t > b j j, t~ > b~ l- vl~/generate p p > t{L} t~, t > b j j, t~ > b~ l- vl~/" proc_card.tmp
-fi
-if [ "$polarization" = "R" ]; then
-  sed -i "s/generate p p > t t~, t > b j j, t~ > b~ l- vl~/generate p p > t{R} t~, t > b j j, t~ > b~ l- vl~/" proc_card.tmp
-fi
-if [ "$polarization" = "down" ]; then
-  sed -i "s/generate p p > t t~, t > b j j, t~ > b~ l- vl~/generate p p > t t~, t > b u d~, t~ > b~ l- vl~/" proc_card.tmp
-fi
-if [ "$polarization" = "charm" ]; then
-  sed -i "s/generate p p > t t~, t > b j j, t~ > b~ l- vl~/generate p p > t t~, t > b c s~, t~ > b~ l- vl~/" proc_card.tmp
+  sed -i "s/p p > t t~/p p > t{L} t~/" proc_card.tmp
+elif [ "$polarization" = "R" ]; then
+  sed -i "s/p p > t t~/p p > t{R} t~/" proc_card.tmp
 fi
 
-# Edit run card
-#sed "s/\(.*\)= nevents\(.*\)/ $num_events = nevents\2/" include/run_card.dat > run_card.tmp
-sed "s/multi_run.*/multi_run $num_runs/" include/multi_run.config > multi_run.tmp
+# Apply generation (inclusive requires no change)
+if [ "$generation" = "first" ]; then
+  sed -i "s/t > b j j/t > b u d~/" proc_card.tmp
+elif [ "$generation" = "second" ]; then
+  sed -i "s/t > b j j/t > b c s~/" proc_card.tmp
+fi
+
+sed "s/multi_run.*/multi_run $num_runs/" multi_run.config > multi_run.tmp
 sed -i "s/set nevents.*/set nevents $num_events_per_run/" multi_run.tmp
 sed -i "s/set iseed.*/set iseed $seed/" multi_run.tmp
 
@@ -51,67 +51,14 @@ sed -i "s/set iseed.*/set iseed $seed/" multi_run.tmp
 ../submodules/mg5amcnlo-v3.5.5/bin/mg5_aMC proc_card.tmp
 
 # Copy the cuts.f card to the SubProcesses folder
-cp ./include/cuts.f "./pp_tt_semi_full_${dataset_tag}/SubProcesses/"
+cp ./cuts.f "./pp_tt_semi_full_${dataset_tag}/SubProcesses/"
 
-# Copy the cards to the Cards folder
-#cp run_card.tmp "./pp_tt_semi_full_${dataset_tag}/Cards/run_card.dat"
-
-# Generate the Events!
-#"./pp_tt_semi_full_${dataset_tag}/bin/generate_events" -f
 echo "Please be patient while MadGraph generates processes..."
 "./pp_tt_semi_full_${dataset_tag}/bin/madevent" multi_run.tmp | tee "MadGraph_${dataset_tag}.log"
 
-# Clean up workspace (generated automatically by madgraph binary)
-rm -f py.py
-rm -f MG5_debug
-rm -f ME5_debug
+# Clean up workspace
+rm -f py.py MG5_debug ME5_debug
 rm *.tmp
-
-#######################
-### Post Processing ###
-#######################
-
-function calc_labels {
-    tag=$1
-    run=$2
-
-    # Extract LHE file with gzip
-    #echo -e "\tDecompressing lhe file..."
-    gzip -dk "./pp_tt_semi_full_${tag}/Events/run_01_$run/unweighted_events.lhe.gz"
-
-    # Find line with version number and delete the proceeding warning
-    # This is needed since I am using git tag instead of production version
-    line_num=$(awk '/VERSION 3.5.5/ {print NR}' "pp_tt_semi_full_${tag}/Events/run_01_$run/unweighted_events.lhe")
-    start_line=$((line_num+1))
-    end_line=$((line_num+4))
-    sed -i "${start_line},${end_line}d" "pp_tt_semi_full_${tag}/Events/run_01_$run/unweighted_events.lhe"
-
-    # Now that warning message is removed, use LHEReader.py to convert LHE file to root file
-    #echo -e "\tConverting lhe file to root format..."
-    python include/LHEReader.py --input "pp_tt_semi_full_${tag}/Events/run_01_$run/unweighted_events.lhe" --output "pp_tt_semi_full_${tag}/hard_process_${tag}_$i.root"
-
-    # Calculate labels
-    python include/TLorentz_Labels.py $tag $run
-
-    # Clean workspace (uncompressed version no longer needed)
-    rm -f "./pp_tt_semi_full_${tag}/Events/run_01_$run/unweighted_events.lhe"
-}
-
-job=0
-batch=1
-for (( i=0 ; i<$num_runs ; i++ ));
-do
-    echo -e "\t\tSubmitting job to calc labels: $i"
-    calc_labels $dataset_tag $i &
-    job=$((job+1))
-    if [ $job == $max_cpu_cores ]; then
-        echo -e "\tStopping jobs submissions! Please wait for batch $batch to finish..."
-        wait
-        job=0
-        batch=$((batch+1))
-    fi
-done
-wait
 
 echo
 echo -e "\tMadGraph Generation Done!"
