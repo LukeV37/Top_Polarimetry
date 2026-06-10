@@ -4,3 +4,4 @@ mkdir zlib-install
 ./configure --prefix="$PWD/zlib-install"
 make -j8
 make install
+sync
