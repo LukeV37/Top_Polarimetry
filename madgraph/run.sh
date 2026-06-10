@@ -27,7 +27,7 @@ set -e
 ###########################
 
 # Edit process card
-sed "s/output pp_tt_semi_full/output pp_tt_semi_full_${dataset_tag}/" proc_card_mg5.dat > proc_card.tmp
+sed "s/output pp_tt_semi_full/output pp_tt_semi_full_${dataset_tag}/" config/proc_card_mg5.dat > proc_card.tmp
 
 # Apply polarization (U requires no spin tag)
 if [ "$polarization" = "L" ]; then
@@ -43,7 +43,7 @@ elif [ "$generation" = "second" ]; then
   sed -i "s/t > b j j/t > b c s~/" proc_card.tmp
 fi
 
-sed "s/multi_run.*/multi_run $num_runs/" multi_run.config > multi_run.tmp
+sed "s/multi_run.*/multi_run $num_runs/" config/multi_run.config > multi_run.tmp
 sed -i "s/set nevents.*/set nevents $num_events_per_run/" multi_run.tmp
 sed -i "s/set iseed.*/set iseed $seed/" multi_run.tmp
 
@@ -51,7 +51,7 @@ sed -i "s/set iseed.*/set iseed $seed/" multi_run.tmp
 ../submodules/mg5amcnlo-v3.5.5/bin/mg5_aMC proc_card.tmp
 
 # Copy the cuts.f card to the SubProcesses folder
-cp ./cuts.f "./pp_tt_semi_full_${dataset_tag}/SubProcesses/"
+cp ./config/cuts.f "./pp_tt_semi_full_${dataset_tag}/SubProcesses/"
 
 echo "Please be patient while MadGraph generates processes..."
 "./pp_tt_semi_full_${dataset_tag}/bin/madevent" multi_run.tmp | tee "MadGraph_${dataset_tag}.log"
