@@ -1,7 +1,7 @@
 #!/bin/bash
 
-if [ -z "$7" ]; then
-    echo "Must enter 7 arguments"
+if [ -z "$8" ]; then
+    echo "Must enter 8 arguments"
     echo -e "\t1: Dataset Tag e.g. unpolarized_10k"
     echo -e "\t2: Polarization: L, R, U"
     echo -e "\t3: Generation: inclusive, first, second"
@@ -9,6 +9,7 @@ if [ -z "$7" ]; then
     echo -e "\t5: Number of Events per Run"
     echo -e "\t6: Max num cpu cores"
     echo -e "\t7: Initial seed"
+    echo -e "\t8: Top pT Cut in GeV"
     exit 1
 fi
 
@@ -19,6 +20,7 @@ num_runs=$4
 num_events_per_run=$5
 max_cpu_cores=$6
 seed=$7
+top_pT_cut=$8
 
 set -e
 
@@ -50,8 +52,9 @@ sed -i "s/set iseed.*/set iseed $seed/" multi_run.tmp
 # Run mg5_aMC binary on the process card
 ../submodules/mg5amcnlo-v3.5.5/bin/mg5_aMC proc_card.tmp
 
-# Copy the cuts.f card to the SubProcesses folder
-cp ./config/cuts.f "./pp_tt_semi_full_${dataset_tag}/SubProcesses/"
+# Insert custom pT(top) cut into the auto-generated cuts.f
+sed "s/__TOP_PT_CUT__/${top_pT_cut}/g" config/pt_cut.f > pt_cut.tmp
+sed -i "/DESACTIVATE_CUT \$E\$/r pt_cut.tmp" "./pp_tt_semi_full_${dataset_tag}/SubProcesses/cuts.f"
 
 echo "Please be patient while MadGraph generates processes..."
 "./pp_tt_semi_full_${dataset_tag}/bin/madevent" multi_run.tmp | tee "MadGraph_${dataset_tag}.log"
