@@ -7,6 +7,14 @@ madgraph/pp_tt_semi_full*
 *.pkl
 *.png
 *.log
+pythia/WS*
 model/WS*
 *__pycache__
 *.pt
+*.o
+*.pcm
+*_dict.cpp
+
+run_dataset
+run_selections
+model/eval_test

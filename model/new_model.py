@@ -112,6 +112,7 @@ class Model(nn.Module):
         
         # Get Down output
         quark_output = self.quark_regression(probe_jet_embedding_Quark)
+        quark_output = F.normalize(quark_output, dim=1)  # project onto unit sphere
 
         # Get Direct output
         combined_output = torch.cat([probe_jet_embedding_Top,probe_jet_embedding_Quark], axis=1)
