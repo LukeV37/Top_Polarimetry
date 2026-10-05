@@ -17,3 +17,4 @@ model/WS*
 
 run_dataset
 run_selections
+model/eval_test

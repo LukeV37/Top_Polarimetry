@@ -12,9 +12,9 @@ import sys
 from new_model import *
 from DataLoader_Parallel import CustomDataset
 
-model_path = "WS_U_10M/training_All_Tasks_Boost_tRest_Bottom_cosSim_10M_140epoch_64embed/models/model_Epoch_103.torch"
-dir_training="WS_U_10M/training_All_Tasks_Boost_tRest_Bottom_cosSim_10M_140epoch_64embed"
-dir_dataset="WS_U_10M/datasets_AllFrame"
+model_path = "WS_U_10M_R1_5_pT250/training_down_60epoch_64embed/model_final.torch"
+dir_training="WS_U_10M_R1_5_pT250/training_down_60epoch_64embed"
+dir_dataset="WS_U_10M_R1_5_pT250/datasets_AllFrame"
 
 batch_size=256
 
@@ -111,6 +111,6 @@ def validate_predictions(true, pred, var_names):
         plt.close()
 
 validate_predictions(true_top, pred_top, ["top_px", "top_py", "top_pz", "top_e"])
-#validate_predictions(true_down, pred_down, ["down_px", "down_py", "down_pz"])
-validate_predictions(true_quark, pred_quark, ["bottom_px", "bottom_py", "bottom_pz"])
+validate_predictions(true_down, pred_down, ["down_px", "down_py", "down_pz"])
+#validate_predictions(true_quark, pred_quark, ["bottom_px", "bottom_py", "bottom_pz"])
 validate_predictions(true_direct, pred_direct, ["costheta"])
