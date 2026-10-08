@@ -1,4 +1,4 @@
-"""Evaluate a U-trained model on independent L and R datasets.
+"""Evaluate one independently trained task model on L and R datasets.
 
 Example:
     python model/evaluate.py \
@@ -8,18 +8,19 @@ Example:
         --task down \
         --output-dir workspaces/eval_down
 
-The output directory contains NumPy arrays for true/predicted top and
-task-specific quark vectors, and true/reconstructed cos(theta), separately for
-L and R. It also contains per-sample top/quark comparison plots and a combined
-L/R cos(theta) plot. Each input dataset is evaluated in full; no split is made.
+The output directory contains NumPy arrays and comparison plots for the selected
+task only. Supported tasks are:
+    top    -> 4-vector regression
+    down   -> normalized 3-vector direction regression
+    bottom -> normalized 3-vector direction regression
 """
 
 import argparse
 from pathlib import Path
 
+import matplotlib
 import numpy as np
 import torch
-import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -28,12 +29,25 @@ from sklearn.metrics import r2_score
 from torch.utils.data import DataLoader
 
 from DataLoader_Parallel import CustomDataset  # noqa: F401 - needed to load serialized datasets
-from new_model import Model  # noqa: F401 - needed to load serialized model checkpoints
+from new_model import Model, VALID_ANALYSIS_TYPES, validate_analysis_type  # noqa: F401
+
+
+TASK_FEATURES = {
+    "top": ("top_px", "top_py", "top_pz", "top_e"),
+    "down": ("down_px", "down_py", "down_pz"),
+    "bottom": ("bottom_px", "bottom_py", "bottom_pz"),
+}
+
+TASK_RANGES = {
+    "top": ((-1000, 1000), (-1000, 1000), (-1000, 1000), (0, 1500)),
+    "down": ((-1.1, 1.1),) * 3,
+    "bottom": ((-1.1, 1.1),) * 3,
+}
 
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Evaluate a model trained on unpolarized U data on L and R datasets."
+        description="Evaluate one independently trained task model on L and R datasets."
     )
     parser.add_argument("--left-dataset", required=True, help="Path to the L dataset_combined.pt")
     parser.add_argument("--right-dataset", required=True, help="Path to the R dataset_combined.pt")
@@ -42,13 +56,13 @@ def parse_args():
         "--checkpoint",
         dest="model_path",
         required=True,
-        help="Path to the U-trained model_final.torch checkpoint",
+        help="Path to the trained model_final.torch checkpoint",
     )
     parser.add_argument(
         "--task",
-        choices=("down", "bottom"),
+        choices=VALID_ANALYSIS_TYPES,
         default="down",
-        help="Which quark target to compare against (default: down)",
+        help="Which task to evaluate: top, down, or bottom (default: down)",
     )
     parser.add_argument("--output-dir", required=True, help="New workspace directory for output arrays")
     parser.add_argument("--batch-size", type=int, default=256, help="Evaluation batch size (default: 256)")
@@ -69,27 +83,26 @@ def get_device(device_arg):
     return device
 
 
-def reconstructed_cos_theta(top, quark):
-    """Cosine between the top momentum and quark directions, event by event."""
-    top_momentum = top[:, :3]
-    top_norm = np.linalg.norm(top_momentum, axis=1, keepdims=True)
-    quark_norm = np.linalg.norm(quark, axis=1, keepdims=True)
+def select_target(batch, task):
+    if task == "top":
+        return batch[3]
+    if task == "down":
+        return batch[4]
+    if task == "bottom":
+        return batch[5]
+    raise ValueError(f"task must be one of {VALID_ANALYSIS_TYPES}, got {task!r}")
 
-    top_direction = np.divide(
-        top_momentum,
-        top_norm,
-        out=np.full_like(top_momentum, np.nan, dtype=np.float64),
-        where=top_norm > 0,
-    )
-    quark_direction = np.divide(
-        quark,
-        quark_norm,
-        out=np.full_like(quark, np.nan, dtype=np.float64),
-        where=quark_norm > 0,
-    )
-    cos_theta = np.sum(top_direction * quark_direction, axis=1)
-    # Guard against tiny floating-point excursions outside the cosine range.
-    return np.clip(cos_theta, -1.0, 1.0)
+
+def select_prediction(model_output, task):
+    """Handle new single-output models and older multi-output checkpoints."""
+    if not isinstance(model_output, tuple):
+        return model_output
+
+    if task == "top":
+        return model_output[0]
+    if task in ("down", "bottom"):
+        return model_output[1]
+    raise ValueError(f"task must be one of {VALID_ANALYSIS_TYPES}, got {task!r}")
 
 
 def plot_predictions(true, pred, feature_names, ranges, title, output_path):
@@ -163,41 +176,6 @@ def plot_predictions(true, pred, feature_names, ranges, title, output_path):
     plt.close(fig)
 
 
-def plot_cos_theta(results_by_sample, output_path):
-    """Save the combined L/R true/predicted cos(theta) histogram."""
-    fig, ax = plt.subplots(figsize=(8, 6))
-    colors = {"L": "r", "R": "b"}
-    for sample in ("L", "R"):
-        results = results_by_sample[sample]
-        color = colors[sample]
-        ax.hist(
-            results["true_cos_theta"],
-            histtype="step",
-            bins=30,
-            range=(-1, 1),
-            color=color,
-            linestyle="-",
-            label=f"True {{{sample}}}",
-        )
-        ax.hist(
-            results["pred_cos_theta"],
-            histtype="step",
-            bins=30,
-            range=(-1, 1),
-            color=color,
-            linestyle="--",
-            label=f"Pred {{{sample}}}",
-        )
-
-    ax.set_title("Cos Theta")
-    ax.set_xlabel(r"$\cos\theta$")
-    ax.set_ylabel("Events")
-    ax.legend()
-    fig.tight_layout()
-    fig.savefig(output_path, dpi=150)
-    plt.close(fig)
-
-
 def evaluate_dataset(dataset_path, sample, model, device, task, batch_size, output_dir):
     dataset_path = Path(dataset_path)
     if not dataset_path.is_file():
@@ -206,77 +184,45 @@ def evaluate_dataset(dataset_path, sample, model, device, task, batch_size, outp
     dataset = torch.load(dataset_path, map_location="cpu", weights_only=False)
     data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
 
-    true_top_batches = []
-    pred_top_batches = []
-    true_quark_batches = []
-    pred_quark_batches = []
-    quark_label_index = 4 if task == "down" else 5
+    true_batches = []
+    pred_batches = []
 
     model.eval()
     with torch.inference_mode():
         for batch in data_loader:
             probe_jet, constituents, event = (tensor.to(device) for tensor in batch[:3])
-            top_labels = batch[3]
-            quark_labels = batch[quark_label_index]
+            target = select_target(batch, task)
 
-            top_pred, quark_pred, _, _ = model(probe_jet, constituents, event)
+            model_output = model(probe_jet, constituents, event)
+            pred = select_prediction(model_output, task)
 
-            true_top_batches.append(top_labels.cpu().numpy())
-            pred_top_batches.append(top_pred.cpu().numpy())
-            true_quark_batches.append(quark_labels.cpu().numpy())
-            pred_quark_batches.append(quark_pred.cpu().numpy())
+            true_batches.append(target.cpu().numpy())
+            pred_batches.append(pred.cpu().numpy())
 
-    if not true_top_batches:
+    if not true_batches:
         raise ValueError(f"{sample} dataset is empty: {dataset_path}")
 
-    true_top = np.concatenate(true_top_batches, axis=0)
-    pred_top = np.concatenate(pred_top_batches, axis=0)
-    true_quark = np.concatenate(true_quark_batches, axis=0)
-    pred_quark = np.concatenate(pred_quark_batches, axis=0)
-    true_cos_theta = reconstructed_cos_theta(true_top, true_quark)
-    pred_cos_theta = reconstructed_cos_theta(pred_top, pred_quark)
+    true_values = np.concatenate(true_batches, axis=0)
+    pred_values = np.concatenate(pred_batches, axis=0)
 
-    arrays = {
-        f"true_top_{sample}": true_top,
-        f"pred_top_{sample}": pred_top,
-        f"true_{task}_{sample}": true_quark,
-        f"pred_{task}_{sample}": pred_quark,
-        f"true_cos_theta_{sample}": true_cos_theta,
-        f"pred_cos_theta_{sample}": pred_cos_theta,
-    }
-    for name, values in arrays.items():
-        np.save(output_dir / f"{name}.npy", values)
+    np.save(output_dir / f"true_{task}_{sample}.npy", true_values)
+    np.save(output_dir / f"pred_{task}_{sample}.npy", pred_values)
 
-    top_names = ("top_px", "top_py", "top_pz", "top_e")
-    top_ranges = ((-1000, 1000), (-1000, 1000), (-1000, 1000), (0, 1500))
-    quark_names = tuple(f"{task}_{component}" for component in ("px", "py", "pz"))
-    quark_ranges = ((-1.1, 1.1),) * 3
     plot_predictions(
-        true_top,
-        pred_top,
-        top_names,
-        top_ranges,
-        f"Top Results: {sample}",
-        output_dir / f"top_comparison_{sample}.png",
-    )
-    plot_predictions(
-        true_quark,
-        pred_quark,
-        quark_names,
-        quark_ranges,
+        true_values,
+        pred_values,
+        TASK_FEATURES[task],
+        TASK_RANGES[task],
         f"{task.capitalize()} Results: {sample}",
         output_dir / f"{task}_comparison_{sample}.png",
     )
 
     print(f"{sample}: evaluated {len(dataset)} events from {dataset_path}")
-    return {
-        "true_cos_theta": true_cos_theta,
-        "pred_cos_theta": pred_cos_theta,
-    }
 
 
 def main():
     args = parse_args()
+    task = validate_analysis_type(args.task)
     if args.batch_size <= 0:
         raise ValueError("--batch-size must be a positive integer")
 
@@ -290,22 +236,24 @@ def main():
     model = torch.load(model_path, map_location=device, weights_only=False)
     if not isinstance(model, torch.nn.Module):
         raise TypeError(
-            "Expected a serialized torch.nn.Module checkpoint. "
-            "This script currently supports the full-model checkpoints saved by New_Training.py."
+            "Expected a serialized torch.nn.Module checkpoint saved by New_Training.py."
         )
+
+    checkpoint_task = getattr(model, "analysis_type", None)
+    if checkpoint_task is not None and checkpoint_task != task:
+        raise ValueError(
+            f"Checkpoint was trained for analysis_type={checkpoint_task!r}, "
+            f"but --task={task!r} was requested"
+        )
+    model.analysis_type = task
     model = model.to(device)
+
     print(f"Using device: {device}")
-    print(f"Evaluating task: {args.task}")
+    print(f"Evaluating task: {task}")
     print(f"Saving NumPy arrays to: {output_dir}")
 
-    results_by_sample = {}
-    results_by_sample["L"] = evaluate_dataset(
-        args.left_dataset, "L", model, device, args.task, args.batch_size, output_dir
-    )
-    results_by_sample["R"] = evaluate_dataset(
-        args.right_dataset, "R", model, device, args.task, args.batch_size, output_dir
-    )
-    plot_cos_theta(results_by_sample, output_dir / "cos_theta_LR.png")
+    evaluate_dataset(args.left_dataset, "L", model, device, task, args.batch_size, output_dir)
+    evaluate_dataset(args.right_dataset, "R", model, device, task, args.batch_size, output_dir)
     print(f"Saved comparison plots to: {output_dir}")
 
 

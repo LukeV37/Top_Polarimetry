@@ -1,284 +1,261 @@
+import sys
+from pathlib import Path
+
+import matplotlib.colors as mcolors
+import matplotlib.pyplot as plt
+import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
-from torch.utils.data import Dataset, DataLoader
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
-from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_score, roc_auc_score
-import sys
-from new_model import *
-from DataLoader_Parallel import CustomDataset
+from sklearn.metrics import r2_score
+from torch.utils.data import DataLoader
+
+from new_model import Model, VALID_ANALYSIS_TYPES, validate_analysis_type
+from DataLoader_Parallel import CustomDataset  # noqa: F401 - needed to load serialized datasets
+
+
+if len(sys.argv) != 7:
+    raise SystemExit(
+        "Usage: python New_Training.py <tag> <epochs> <embed_dim> "
+        "<dir_dataset> <dir_training> <analysis_type>"
+    )
 
 tag = str(sys.argv[1])
 epochs = int(sys.argv[2])
 embed_dim = int(sys.argv[3])
-dir_dataset = str(sys.argv[4])
-dir_training = str(sys.argv[5])
-train_type = str(sys.argv[6])
+dir_dataset = Path(sys.argv[4])
+dir_training = Path(sys.argv[5])
+train_type = validate_analysis_type(sys.argv[6])
 
-dir_startingPoint = "WS_U_10M_R1_5_pT400/training_bottom_60epoch_64embed"
+if epochs <= 0:
+    raise ValueError("epochs must be positive")
 
-starting_new = True
-continue_training = not starting_new
+dir_training.mkdir(parents=True, exist_ok=True)
+(dir_training / "models").mkdir(parents=True, exist_ok=True)
 
-# Loss parameters
-alpha   = 1       # Top Loss
-beta    = 1e4       # Quark Loss
-gamma   = 0       # Direct Loss
-#zeta = 0           # Track loss
+batch_size = 256
+learning_rate = 0.0001
+num_heads = 4
+step_size = 160
+Gamma = 0.1
 
-batch_size=256
-learning_rate=0.0001
+TASK_FEATURES = {
+    "top": ["top_px", "top_py", "top_pz", "top_e"],
+    "down": ["down_px", "down_py", "down_pz"],
+    "bottom": ["bottom_px", "bottom_py", "bottom_pz"],
+}
 
-dset = torch.load(dir_dataset+"/dataset_combined.pt", weights_only=False)
+TASK_RANGES = {
+    "top_px": (-1000, 1000),
+    "top_py": (-1000, 1000),
+    "top_pz": (-1000, 1000),
+    "top_e": (0, 1500),
+    "down_px": (-1.1, 1.1),
+    "down_py": (-1.1, 1.1),
+    "down_pz": (-1.1, 1.1),
+    "bottom_px": (-1.1, 1.1),
+    "bottom_py": (-1.1, 1.1),
+    "bottom_pz": (-1.1, 1.1),
+}
 
-if train_type=="down":
-    label_idx=0
-if train_type=="bottom":
-    label_idx=1
 
-generator = torch.Generator().manual_seed(42)
+def select_target(top_labels, down_labels, bottom_labels, analysis_type):
+    if analysis_type == "top":
+        return top_labels
+    if analysis_type == "down":
+        return down_labels
+    if analysis_type == "bottom":
+        return bottom_labels
+    raise ValueError(f"analysis_type must be one of {VALID_ANALYSIS_TYPES}, got {analysis_type!r}")
 
-train_dataset, test_dataset = torch.utils.data.random_split(dset, [0.75, 0.25], generator=generator)
-val_dataset, test_dataset = torch.utils.data.random_split(test_dataset, [0.2, 0.8], generator=generator)
 
-train_loader = DataLoader(train_dataset, batch_size=batch_size)
-val_loader = DataLoader(val_dataset, batch_size=batch_size)
-test_loader = DataLoader(test_dataset, batch_size=batch_size)
+def task_loss(pred, target, analysis_type, mse_loss_fn, cos_sim_loss_fn):
+    if analysis_type == "top":
+        return mse_loss_fn(pred, target)
 
-print("GPU Available: ", torch.cuda.is_available())
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-print(device)
+    cos_target = torch.ones(pred.shape[0], dtype=pred.dtype, device=pred.device)
+    return cos_sim_loss_fn(pred, target, cos_target)
 
-num_heads=4
-if starting_new:
-    model = Model(embed_dim,num_heads).to(device)
-if continue_training:
-    model = torch.load(dir_startingPoint+"/model_final.torch",weights_only=False,map_location=torch.device(device))
 
-step_size=160
-Gamma=0.1
-#optimizer = optim.AdamW(model.parameters(), lr=learning_rate)
-optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=Gamma)
+def validate_predictions(true, pred, var_names):
+    for i, var in enumerate(var_names):
+        var_range = TASK_RANGES[var]
 
-def calc_norm(y_pred):
-    norm = torch.sqrt(torch.sum(torch.square(y_pred), dim=1)).reshape(-1,1)
-    y_pred_norm = torch.div(y_pred, norm)
-    return y_pred_norm
+        plt.figure()
+        plt.hist(
+            np.ravel(true[:, i]),
+            histtype="step",
+            color="r",
+            label="True Distribution",
+            bins=50,
+            range=var_range,
+        )
+        plt.hist(
+            np.ravel(pred[:, i]),
+            histtype="step",
+            color="b",
+            label="Predicted Distribution",
+            bins=50,
+            range=var_range,
+        )
+        plt.title(f"Predicted Output Distribution: {var}")
+        plt.legend()
+        plt.yscale("log")
+        plt.xlabel(var, loc="right")
+        plt.savefig(dir_training / f"pred_1d_{var}.png")
+        plt.close()
 
-def uniform_to_circle(cos_theta):
-    angle = torch.acos(cos_theta)
-    return torch.cat([cos_theta, torch.sin(angle)], dim=1)
+        fig, ax = plt.subplots()
+        plt.title(f"Output Distribution: {var}")
+        ax.hist2d(
+            np.ravel(pred[:, i]),
+            np.ravel(true[:, i]),
+            bins=100,
+            norm=mcolors.LogNorm(),
+            range=(var_range, var_range),
+        )
+        plt.xlabel(f"Predicted {var}", loc="right")
+        plt.ylabel(f"True {var}", loc="top")
+        diff = var_range[1] - var_range[0]
+        plt.text(
+            var_range[1] - 0.3 * diff,
+            var_range[0] + 0.2 * diff,
+            "$R^2$ value: " + str(round(r2_score(np.ravel(true[:, i]), np.ravel(pred[:, i])), 3)),
+            backgroundcolor="r",
+            color="k",
+        )
+        plt.savefig(dir_training / f"pred_2d_{var}.png")
+        plt.close()
 
-cosSim_loss_fn = nn.CosineEmbeddingLoss()
-MSE_loss_fn = nn.MSELoss()
-CCE_loss_fn = nn.CrossEntropyLoss()
-kl_loss     = nn.KLDivLoss(reduction="batchmean")
 
-print("Trainable Parameters :", sum(p.numel() for p in model.parameters() if p.requires_grad))
-print("Number of Training Events: ", len(train_loader)*batch_size)
-
-for probe_jet, constituents, event, top_labels, down_labels, bottom_labels, direct_labels, track_labels in train_loader:
-    top_pred, quark_pred, direct_pred, track_pred = model(probe_jet.to(device), constituents.to(device), event.to(device))
-    break
-
-def train(model, optimizer, train_loader, val_loader, epochs=40):
-    
+def train(model, optimizer, scheduler, train_loader, val_loader, device, epochs=40):
     combined_history = []
-    
+    mse_loss_fn = nn.MSELoss()
+    cos_sim_loss_fn = nn.CosineEmbeddingLoss()
+
     for e in range(epochs):
         model.train()
         cumulative_loss_train = 0
         num_train = len(train_loader)
 
-        for probe_jet, constituents, event, top_labels, down_labels, bottom_labels, direct_labels, track_labels in train_loader:
+        for probe_jet, constituents, event, top_labels, down_labels, bottom_labels, _direct_labels, _track_labels in train_loader:
             optimizer.zero_grad()
-            
-            top_pred, quark_pred, direct_pred, track_pred = model(probe_jet.to(device), constituents.to(device), event.to(device))
 
-            #quark_pred = calc_norm(quark_pred)
-            #direct_pred = calc_norm(direct_pred)
-            true_costheta = direct_labels[:,label_idx].reshape(-1,1)
-            direct_true = uniform_to_circle(true_costheta)
-            cos_target = torch.ones(quark_pred.shape[0]).to(device)
-
-            top_loss      = MSE_loss_fn(top_pred, top_labels.to(device))
-            if train_type=="down":
-                quark_loss     = cosSim_loss_fn(quark_pred, down_labels.to(device), cos_target)
-            if train_type=="bottom":
-                quark_loss     = cosSim_loss_fn(quark_pred, bottom_labels.to(device), cos_target)
-            costheta_loss = cosSim_loss_fn(direct_pred, direct_true.to(device), cos_target)
-            #track_loss    = CCE_loss_fn(track_pred, track_labels.to(device))
-
-            loss  = alpha*top_loss + beta*quark_loss + gamma*costheta_loss #+ zeta*track_loss
+            pred = model(probe_jet.to(device), constituents.to(device), event.to(device))
+            target = select_target(top_labels, down_labels, bottom_labels, train_type).to(device)
+            loss = task_loss(pred, target, train_type, mse_loss_fn, cos_sim_loss_fn)
 
             loss.backward()
             optimizer.step()
-            
-            cumulative_loss_train+=loss.detach().cpu().numpy().mean()
-            
+
+            cumulative_loss_train += loss.detach().cpu().numpy().mean()
+
         cumulative_loss_train = cumulative_loss_train / num_train
-        
+
         model.eval()
         cumulative_loss_val = 0
-        cumulative_loss_top_val = 0
-        cumulative_loss_quark_val = 0
-        cumulative_loss_direct_val = 0
-        cumulative_loss_trk_val= 0
         num_val = len(val_loader)
-        for probe_jet, constituents, event, top_labels, down_labels, bottom_labels, direct_labels, track_labels in val_loader:
-            top_pred, quark_pred, direct_pred, track_pred = model(probe_jet.to(device), constituents.to(device), event.to(device))
+        with torch.inference_mode():
+            for probe_jet, constituents, event, top_labels, down_labels, bottom_labels, _direct_labels, _track_labels in val_loader:
+                pred = model(probe_jet.to(device), constituents.to(device), event.to(device))
+                target = select_target(top_labels, down_labels, bottom_labels, train_type).to(device)
+                loss = task_loss(pred, target, train_type, mse_loss_fn, cos_sim_loss_fn)
 
-            #quark_pred = calc_norm(quark_pred)
-            #direct_pred = calc_norm(direct_pred)
-            true_costheta = direct_labels[:,label_idx].reshape(-1,1)
-            direct_true = uniform_to_circle(true_costheta)
-            cos_target = torch.ones(quark_pred.shape[0]).to(device)
+                cumulative_loss_val += loss.detach().cpu().numpy().mean()
 
-            top_loss      = MSE_loss_fn(top_pred, top_labels.to(device))
-            if train_type=="down":
-                quark_loss     = cosSim_loss_fn(quark_pred, down_labels.to(device), cos_target)
-            if train_type=="bottom":
-                quark_loss     = cosSim_loss_fn(quark_pred, bottom_labels.to(device), cos_target)
-            #print(quark_pred.shape, bottom_labels.shape, cos_target.shape, bottom_loss.detach().cpu())
-            costheta_loss = cosSim_loss_fn(direct_pred, direct_true.to(device), cos_target)
-            #print(direct_pred.shape, direct_true.shape, cos_target.shape, costheta_loss.detach().cpu())
-            #print(direct_pred)
-            #print(direct_true)
-            #costheta_loss = MSE_loss_fn(direct_pred, bottom_costheta.to(device))
-            #track_loss    = CCE_loss_fn(track_pred, track_labels.to(device))
-
-            loss  = alpha*top_loss + beta*quark_loss + gamma*costheta_loss #+ zeta*track_loss
-
-            cumulative_loss_val+=loss.detach().cpu().numpy().mean()
-            cumulative_loss_top_val+=top_loss.detach().cpu().numpy().mean()
-            cumulative_loss_quark_val+=quark_loss.detach().cpu().numpy().mean()
-            cumulative_loss_direct_val+=costheta_loss.detach().cpu().numpy().mean()
-            #cumulative_loss_trk_val+=track_loss.detach().cpu().numpy().mean()
-        
         cumulative_loss_val = cumulative_loss_val / num_val
-        cumulative_loss_top_val = alpha*cumulative_loss_top_val / num_val
-        cumulative_loss_quark_val = beta*cumulative_loss_quark_val / num_val
-        cumulative_loss_direct_val = gamma*cumulative_loss_direct_val / num_val
-        #cumulative_loss_trk_val= zeta*cumulative_loss_trk_val / num_val
-        
         combined_history.append([cumulative_loss_train, cumulative_loss_val])
 
         scheduler.step()
 
-        if e%1==0:
-            print('Epoch:',e+1,'\tTrain Loss:',round(cumulative_loss_train,6),'\tVal Loss:',round(cumulative_loss_val,6))
-            print('\t\t\t\t\t----------------------')
-            print('\t\t\t\t\tTop Loss: ', round(cumulative_loss_top_val,6))
-            print('\t\t\t\t\tQuark Loss: ', round(cumulative_loss_quark_val,6))
-            print('\t\t\t\t\tDirect Loss: ', round(cumulative_loss_direct_val,6))
-            #print('\t\t\t\t\tTrack Loss: ', round(cumulative_loss_trk_val,6))
-            print()
+        print(
+            "Epoch:",
+            e + 1,
+            "\tTrain Loss:",
+            round(cumulative_loss_train, 6),
+            "\tVal Loss:",
+            round(cumulative_loss_val, 6),
+        )
+        print()
 
-        torch.save(model,dir_training+"/models/model_Epoch_"+str(e+1)+".torch")
-            
+        torch.save(model, dir_training / "models" / f"model_Epoch_{e + 1}.torch")
+
     return np.array(combined_history)
 
-history = train(model, optimizer, train_loader, val_loader, epochs=epochs)
 
-torch.save(model,dir_training+"/model_final.torch")
+dataset_path = dir_dataset / "dataset_combined.pt"
+if not dataset_path.is_file():
+    raise FileNotFoundError(f"Dataset not found: {dataset_path}")
+
+dset = torch.load(dataset_path, weights_only=False)
+
+generator = torch.Generator().manual_seed(42)
+train_dataset, test_dataset = torch.utils.data.random_split(
+    dset, [0.75, 0.25], generator=generator
+)
+val_dataset, test_dataset = torch.utils.data.random_split(
+    test_dataset, [0.2, 0.8], generator=generator
+)
+
+train_loader = DataLoader(train_dataset, batch_size=batch_size)
+val_loader = DataLoader(val_dataset, batch_size=batch_size)
+test_loader = DataLoader(test_dataset, batch_size=batch_size)
+
+print("Training tag:", tag)
+print("Training task:", train_type)
+print("GPU Available: ", torch.cuda.is_available())
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+print(device)
+
+model = Model(embed_dim, num_heads, train_type).to(device)
+optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=Gamma)
+
+print("Trainable Parameters :", sum(p.numel() for p in model.parameters() if p.requires_grad))
+print("Number of Training Events: ", len(train_dataset))
+print("Number of Validation Events: ", len(val_dataset))
+print("Number of Test Events: ", len(test_dataset))
+print()
+
+history = train(model, optimizer, scheduler, train_loader, val_loader, device, epochs=epochs)
+
+torch.save(model, dir_training / "model_final.torch")
 
 plt.figure()
-plt.plot(history[:,0], label="Train")
-plt.plot(history[:,1], label="Val")
-plt.title('Loss')
+plt.plot(history[:, 0], label="Train")
+plt.plot(history[:, 1], label="Val")
+plt.title(f"Loss: {train_type}")
 plt.legend()
-plt.yscale('log')
-plt.savefig(dir_training+"/loss_curve_total.png")
-#plt.show()
+plt.yscale("log")
+plt.savefig(dir_training / "loss_curve_total.png")
+plt.close()
 
 plt.figure()
-plt.plot(history[int(epochs/2):,0], label="Train")
-plt.plot(history[int(epochs/2):,1], label="Val")
-plt.title('Loss')
+plt.plot(history[int(epochs / 2) :, 0], label="Train")
+plt.plot(history[int(epochs / 2) :, 1], label="Val")
+plt.title(f"Loss: {train_type}")
 plt.legend()
-plt.yscale('log')
-plt.savefig(dir_training+"/loss_curve_second_half.png")
-#plt.show()
+plt.yscale("log")
+plt.savefig(dir_training / "loss_curve_second_half.png")
+plt.close()
 
-top_feats=4
-pred_top = np.array([]).reshape(0,top_feats)
-true_top = np.array([]).reshape(0,top_feats)
+num_feats = len(TASK_FEATURES[train_type])
+pred_batches = []
+true_batches = []
 
-quark_feats=3
-pred_quark = np.array([]).reshape(0,quark_feats)
-true_quark = np.array([]).reshape(0,quark_feats)
+model.eval()
+with torch.inference_mode():
+    for probe_jet, constituents, event, top_labels, down_labels, bottom_labels, _direct_labels, _track_labels in test_loader:
+        pred = model(probe_jet.to(device), constituents.to(device), event.to(device))
+        target = select_target(top_labels, down_labels, bottom_labels, train_type)
 
-direct_feats=1
-pred_direct = np.array([]).reshape(0,direct_feats)
-true_direct = np.array([]).reshape(0,direct_feats)
+        pred_batches.append(pred.detach().cpu().numpy())
+        true_batches.append(target.detach().cpu().numpy())
 
-for probe_jet, constituents, event, top_labels, down_labels, bottom_labels, direct_labels, track_labels in test_loader:
-    top_pred, quark_pred, direct_pred, track_pred = model(probe_jet.to(device), constituents.to(device), event.to(device))
+if not pred_batches:
+    raise ValueError("Test dataset is empty")
 
-    #quark_pred = calc_norm(quark_pred)
-    #direct_pred = calc_norm(direct_pred)
+pred_labels = np.concatenate(pred_batches, axis=0).reshape(-1, num_feats)
+true_labels = np.concatenate(true_batches, axis=0).reshape(-1, num_feats)
 
-    pred_top = np.vstack((pred_top,top_pred.detach().cpu().numpy()))
-    true_top = np.vstack((true_top,top_labels.detach().cpu().numpy()))
-
-    pred_quark = np.vstack((pred_quark,quark_pred.detach().cpu().numpy()))
-    if train_type=="down":
-        true_quark = np.vstack((true_quark,down_labels.detach().cpu().numpy()))
-    if train_type=="bottom":
-        true_quark = np.vstack((true_quark,bottom_labels.detach().cpu().numpy()))
-
-    pred_direct = np.vstack((pred_direct,direct_pred[:,0].reshape(-1,1).detach().cpu().numpy()))
-    true_direct = np.vstack((true_direct,direct_labels[:,label_idx].reshape(-1,1).detach().cpu().numpy()))
-
-def validate_predictions(true, pred, var_names):
-    num_feats = len(var_names)
-    ranges_dict = {"top_px": (-1000,1000),
-                   "top_py": (-1000,1000),
-                   "top_pz": (-1000,1000),
-                   "top_e" : (0,1500),
-                   "down_px": (-1.1,1.1),
-                   "down_py": (-1.1,1.1),
-                   "down_pz": (-1.1,1.1),
-                   "bottom_px": (-1.1,1.1),
-                   "bottom_py": (-1.1,1.1),
-                   "bottom_pz": (-1.1,1.1),
-                   "costheta": (-1.1,1.1)}
-
-    for i ,var in enumerate(var_names):
-        var_range = ranges_dict[var]
-
-        plt.figure()
-        plt.hist(np.ravel(true[:,i]),histtype='step',color='r',label='True Distribution',bins=50,range=var_range)
-        plt.hist(np.ravel(pred[:,i]),histtype='step',color='b',label='Predicted Distribution',bins=50,range=var_range)
-        plt.title("Predicted Ouput Distribution using Attention Model")
-        plt.legend()
-        plt.yscale('log')
-        plt.xlabel(var_names[i],loc='right')
-        plt.savefig(dir_training+"/pred_1d_"+var_names[i]+".png")
-        #plt.show()
-        plt.close()
-
-        #plt.figure()
-        fig, ax = plt.subplots()
-        plt.title("Ouput Distribution using Attention Model")
-        h = ax.hist2d(np.ravel(pred[:,i]),np.ravel(true[:,i]), bins=100,norm=mcolors.LogNorm(),range=(var_range,var_range))
-        #fig.colorbar(h[3], ax=ax)
-        plt.xlabel('Predicted '+var_names[i],loc='right')
-        plt.ylabel('True '+var_names[i],loc='top')
-        diff = var_range[1] - var_range[0]
-        plt.text(var_range[1]-0.3*diff,var_range[0]+0.2*diff,"$R^2$ value: "+str(round(r2_score(np.ravel(true[:,i]),np.ravel(pred[:,i])),3)),backgroundcolor='r',color='k')
-        #print("R^2 value: ", round(r2_score(true_labels[:,i],predicted_labels[:,i]),3))
-        plt.savefig(dir_training+"/pred_2d_"+var_names[i]+".png")
-        #plt.show()
-        plt.close()
-
-validate_predictions(true_top, pred_top, ["top_px", "top_py", "top_pz", "top_e"])
-if train_type=="down":
-    validate_predictions(true_quark, pred_quark, ["down_px", "down_py", "down_pz"])
-if train_type=="bottom":
-    validate_predictions(true_quark, pred_quark, ["bottom_px", "bottom_py", "bottom_pz"])
-validate_predictions(true_direct, pred_direct, ["costheta"])
+validate_predictions(true_labels, pred_labels, TASK_FEATURES[train_type])

@@ -4,8 +4,18 @@
 if [[ -z $1 ]]; then
   source job.config
 else
-  source $1
+  source "$1"
 fi
+
+case "$analysis_type" in
+  top|down|bottom)
+    ;;
+  *)
+    echo "analysis_type must be one of: top, down, bottom" >&2
+    echo "Current analysis_type: ${analysis_type}" >&2
+    exit 1
+    ;;
+esac
 
 # Get current directory
 WORKING_DIR=$(pwd)
@@ -73,11 +83,12 @@ fi
 # Run training script
 if [ "$bypass_train" = false ]; then
   echo "Please be patient for Training..."
+  echo -e "\tTraining task: $analysis_type"
   start=`date +%s`
   cd model
-  mkdir -p $dir_training
+  mkdir -p "$dir_training"
   mkdir -p "$dir_training/models"
-  python -u New_Training.py $PY_tag $epochs $embed_dim $dir_datasets $dir_training $analysis_type | tee "${dir_training}/training.log"
+  python -u New_Training.py "$PY_tag" "$epochs" "$embed_dim" "$dir_datasets" "$dir_training" "$analysis_type" | tee "${dir_training}/training.log"
   cd $WORKING_DIR
   end=`date +%s`
   runtime=$((end-start))
