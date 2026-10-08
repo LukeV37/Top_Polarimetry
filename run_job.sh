@@ -17,6 +17,54 @@ case "$analysis_type" in
     ;;
 esac
 
+if [[ -z "${loss_type:-}" ]]; then
+  if [ "$analysis_type" = "top" ]; then
+    loss_type="mse"
+  else
+    loss_type="cossim"
+  fi
+fi
+
+loss_type="${loss_type,,}"
+loss_type="${loss_type//-/_}"
+case "$loss_type" in
+  cos|cosine|cos_sim|cosinesim|cosine_similarity|cosine_embedding)
+    loss_type="cossim"
+    ;;
+esac
+
+if [ "$analysis_type" = "top" ] && [ "$loss_type" != "mse" ]; then
+  echo "analysis_type=top always uses loss_type=mse" >&2
+  echo "Current loss_type: ${loss_type}" >&2
+  exit 1
+fi
+
+case "$loss_type" in
+  mse|cossim|vmf)
+    ;;
+  *)
+    echo "loss_type must be one of: mse, cossim, vmf" >&2
+    echo "Current loss_type: ${loss_type}" >&2
+    exit 1
+    ;;
+esac
+
+if [[ -z "${log_every_batches:-}" ]]; then
+  log_every_batches=500
+fi
+
+case "$loss_type" in
+  mse)
+    loss_label="MSE"
+    ;;
+  cossim)
+    loss_label="CosSim"
+    ;;
+  vmf)
+    loss_label="vMF"
+    ;;
+esac
+
 # Get current directory
 WORKING_DIR=$(pwd)
 
@@ -84,11 +132,14 @@ fi
 if [ "$bypass_train" = false ]; then
   echo "Please be patient for Training..."
   echo -e "\tTraining task: $analysis_type"
+  echo -e "\tLoss type: $loss_type"
+  echo -e "\tLog every batches: $log_every_batches"
   start=`date +%s`
   cd model
   mkdir -p "$dir_training"
   mkdir -p "$dir_training/models"
-  python -u New_Training.py "$PY_tag" "$epochs" "$embed_dim" "$dir_datasets" "$dir_training" "$analysis_type" | tee "${dir_training}/training.log"
+  training_log="${dir_training}/training_${analysis_type}_${loss_label}.log"
+  python -u New_Training.py "$PY_tag" "$epochs" "$embed_dim" "$dir_datasets" "$dir_training" "$analysis_type" "$loss_type" "$log_every_batches" | tee "$training_log"
   cd $WORKING_DIR
   end=`date +%s`
   runtime=$((end-start))

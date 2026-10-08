@@ -13,6 +13,8 @@ task only. Supported tasks are:
     top    -> 4-vector regression
     down   -> normalized 3-vector direction regression
     bottom -> normalized 3-vector direction regression
+
+For vMF down/bottom checkpoints, predicted kappa arrays are also saved.
 """
 
 import argparse
@@ -94,14 +96,26 @@ def select_target(batch, task):
 
 
 def select_prediction(model_output, task):
-    """Handle new single-output models and older multi-output checkpoints."""
+    """Return selected prediction and optional vMF kappa.
+
+    Handles new single-output models, new vMF `(mu, kappa)` outputs, and older
+    multi-output checkpoints.
+    """
     if not isinstance(model_output, tuple):
-        return model_output
+        return model_output, None
+
+    if (
+        len(model_output) == 2
+        and torch.is_tensor(model_output[0])
+        and torch.is_tensor(model_output[1])
+        and model_output[1].ndim == 1
+    ):
+        return model_output[0], model_output[1]
 
     if task == "top":
-        return model_output[0]
+        return model_output[0], None
     if task in ("down", "bottom"):
-        return model_output[1]
+        return model_output[1], None
     raise ValueError(f"task must be one of {VALID_ANALYSIS_TYPES}, got {task!r}")
 
 
@@ -186,6 +200,7 @@ def evaluate_dataset(dataset_path, sample, model, device, task, batch_size, outp
 
     true_batches = []
     pred_batches = []
+    kappa_batches = []
 
     model.eval()
     with torch.inference_mode():
@@ -194,10 +209,12 @@ def evaluate_dataset(dataset_path, sample, model, device, task, batch_size, outp
             target = select_target(batch, task)
 
             model_output = model(probe_jet, constituents, event)
-            pred = select_prediction(model_output, task)
+            pred, kappa = select_prediction(model_output, task)
 
             true_batches.append(target.cpu().numpy())
             pred_batches.append(pred.cpu().numpy())
+            if kappa is not None:
+                kappa_batches.append(kappa.cpu().numpy())
 
     if not true_batches:
         raise ValueError(f"{sample} dataset is empty: {dataset_path}")
@@ -207,6 +224,9 @@ def evaluate_dataset(dataset_path, sample, model, device, task, batch_size, outp
 
     np.save(output_dir / f"true_{task}_{sample}.npy", true_values)
     np.save(output_dir / f"pred_{task}_{sample}.npy", pred_values)
+    if kappa_batches:
+        kappa_values = np.concatenate(kappa_batches, axis=0)
+        np.save(output_dir / f"pred_kappa_{task}_{sample}.npy", kappa_values)
 
     plot_predictions(
         true_values,
@@ -250,6 +270,7 @@ def main():
 
     print(f"Using device: {device}")
     print(f"Evaluating task: {task}")
+    print(f"Checkpoint loss type: {getattr(model, 'loss_type', 'unknown')}")
     print(f"Saving NumPy arrays to: {output_dir}")
 
     evaluate_dataset(args.left_dataset, "L", model, device, task, args.batch_size, output_dir)

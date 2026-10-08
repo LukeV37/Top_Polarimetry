@@ -4,6 +4,15 @@ import torch.nn.functional as F
 
 
 VALID_ANALYSIS_TYPES = ("top", "down", "bottom")
+VALID_LOSS_TYPES = ("mse", "cossim", "vmf")
+LOSS_TYPE_ALIASES = {
+    "cos": "cossim",
+    "cosine": "cossim",
+    "cos_sim": "cossim",
+    "cosinesim": "cossim",
+    "cosine_similarity": "cossim",
+    "cosine_embedding": "cossim",
+}
 
 
 def validate_analysis_type(analysis_type):
@@ -13,6 +22,38 @@ def validate_analysis_type(analysis_type):
             f"analysis_type must be one of {VALID_ANALYSIS_TYPES}, got {analysis_type!r}"
         )
     return analysis_type
+
+
+def validate_loss_type(loss_type, analysis_type):
+    analysis_type = validate_analysis_type(analysis_type)
+    if loss_type is None or str(loss_type).strip() == "":
+        return "mse" if analysis_type == "top" else "cossim"
+
+    loss_type = str(loss_type).lower().replace("-", "_")
+    loss_type = LOSS_TYPE_ALIASES.get(loss_type, loss_type)
+
+    if loss_type not in VALID_LOSS_TYPES:
+        raise ValueError(
+            f"loss_type must be one of {VALID_LOSS_TYPES}, got {loss_type!r}"
+        )
+    if analysis_type == "top" and loss_type != "mse":
+        raise ValueError("analysis_type='top' always uses loss_type='mse'")
+
+    return loss_type
+
+
+class VMFHead(nn.Module):
+    """Predict vMF mean direction and concentration for 3-vector tasks."""
+
+    def __init__(self, in_dim):
+        super(VMFHead, self).__init__()
+        self.fc = nn.Linear(in_dim, 4)
+
+    def forward(self, h):
+        out = self.fc(h)
+        mu = F.normalize(out[:, :3], dim=-1)
+        kappa = F.softplus(out[:, 3]) + 1e-4
+        return mu, kappa
 
 
 class Encoder(nn.Module):
@@ -66,18 +107,20 @@ class Stack(nn.Module):
 class Model(nn.Module):
     """Single-task model selected by analysis_type.
 
-    analysis_type="top" predicts a 4-vector.
+    analysis_type="top" predicts a 4-vector and always uses MSE.
     analysis_type="down" or "bottom" predicts a normalized 3-vector direction.
+    For down/bottom, loss_type can be "mse", "cossim", or "vmf".
 
     The previous multi-output heads (track classification, direct/costheta
     regression, simultaneous top/quark heads) are intentionally not constructed
     here so each checkpoint is an independent single-task model.
     """
 
-    def __init__(self, embed_dim, num_heads, analysis_type="down"):
+    def __init__(self, embed_dim, num_heads, analysis_type="down", loss_type=None):
         super(Model, self).__init__()
 
         self.analysis_type = validate_analysis_type(analysis_type)
+        self.loss_type = validate_loss_type(loss_type, self.analysis_type)
         self.embed_dim = embed_dim
         self.num_heads = num_heads
         self.output_dim = 4 if self.analysis_type == "top" else 3
@@ -92,10 +135,16 @@ class Model(nn.Module):
         self.stack2 = Stack(self.embed_dim, self.num_heads)
         self.task_stack = Stack(self.embed_dim, self.num_heads)
 
-        # Single task-specific regression head.
-        self.task_regression = nn.Linear(self.embed_dim, self.output_dim)
+        # Single task-specific regression head. vMF uses an extra concentration
+        # output, but is still a single-task down/bottom model.
+        if self.loss_type == "vmf":
+            self.task_regression = VMFHead(self.embed_dim)
+        else:
+            self.task_regression = nn.Linear(self.embed_dim, self.output_dim)
 
     def _normalize_if_direction_task(self, output):
+        if isinstance(output, tuple):
+            return output
         analysis_type = getattr(self, "analysis_type", "down")
         if analysis_type in ("down", "bottom"):
             output = F.normalize(output, dim=1)
