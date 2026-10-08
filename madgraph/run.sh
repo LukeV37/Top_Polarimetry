@@ -52,9 +52,10 @@ sed -i "s/set iseed.*/set iseed $seed/" multi_run.tmp
 # Run mg5_aMC binary on the process card
 ../submodules/mg5amcnlo-v3.5.5/bin/mg5_aMC proc_card.tmp
 
-# Insert custom pT(top) cut into the auto-generated cuts.f
+# Insert the custom pT(top) cut into the auto-generated cuts.f.
 sed "s/__TOP_PT_CUT__/${top_pT_cut}/g" config/pt_cut.f > pt_cut.tmp
-sed -i "/DESACTIVATE_CUT \$E\$/r pt_cut.tmp" "./pp_tt_semi_full_${dataset_tag}/SubProcesses/cuts.f"
+sed -i '/DESACTIVATE_CUT \$E\$/r pt_cut.tmp' \
+    "./pp_tt_semi_full_${dataset_tag}/SubProcesses/cuts.f"
 
 echo "Please be patient while MadGraph generates processes..."
 "./pp_tt_semi_full_${dataset_tag}/bin/madevent" multi_run.tmp | tee "MadGraph_${dataset_tag}.log"
